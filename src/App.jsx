@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Navbar from './components/Navbar';
 import CourtSchedule from './components/CourtSchedule';
-import CancellationStream from './components/CancellationStream';
 import NotificationSettingsModal from './components/NotificationSettingsModal';
-import SonggangInfoCard from './components/SonggangInfoCard';
 
 import { fetchCourtSchedule, fetchCancellationLogs } from './services/api';
 import { playNotificationSound } from './services/sound';
@@ -37,7 +35,7 @@ export default function App() {
     soundEnabled: true,
     discordWebhookUrl: '',
     kakaoAccessToken: '',
-    kakaoRecipientType: 'memo', // memo (personal) or channel (group chat)
+    kakaoRecipientType: 'memo',
     pollInterval: 60
   });
 
@@ -124,7 +122,7 @@ export default function App() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       
-      {/* Navbar */}
+      {/* Navbar (Centered action buttons, clean header) */}
       <Navbar
         isMonitoring={true}
         lastRefreshed={lastRefreshed}
@@ -189,36 +187,20 @@ export default function App() {
         </div>
       )}
 
-      {/* Main Grid Container */}
+      {/* Main Responsive Container */}
       <main style={{
-        maxWidth: '1380px',
+        maxWidth: '960px',
         margin: '0 auto',
         padding: '0 20px 40px 20px',
-        width: '100%',
-        display: 'grid',
-        gridTemplateColumns: '1fr 340px',
-        gap: '24px'
+        width: '100%'
       }}>
-        
-        {/* Left Column: Schedule Grid */}
-        <div>
-          <CourtSchedule
-            selectedDate={selectedDate}
-            onDateChange={setSelectedDate}
-            scheduleData={scheduleData}
-            onSlotClick={handleSlotClick}
-          />
-        </div>
-
-        {/* Right Column: Sidebar Stream & Info Card */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <CancellationStream
-            logs={cancellationLogs}
-            onSlotClick={handleSlotClick}
-          />
-          <SonggangInfoCard />
-        </div>
-
+        <CourtSchedule
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+          scheduleData={scheduleData}
+          cancellationLogs={cancellationLogs}
+          onSlotClick={handleSlotClick}
+        />
       </main>
 
       {/* Booking Confirmation Modal */}
