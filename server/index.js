@@ -80,21 +80,6 @@ if (process.argv.includes('--cron-once')) {
     const targetDates = getTargetCrawlDates();
     console.log(`[GitHub Actions Agent] Crawling ${targetDates.length} target dates (Scope: ${targetDates[0]} ~ ${targetDates[targetDates.length - 1]})...`);
     
-    // Always trigger a GitHub Actions KakaoTalk verification test message if token is configured
-    if (process.env.KAKAO_ACCESS_TOKEN) {
-      console.log('[GitHub Actions Agent] 💬 Sending KakaoTalk Integration Test Message to verified user...');
-      const testEvent = {
-        id: 'test-gh-' + Date.now(),
-        courtName: '1번 코트 (실내)',
-        date: new Date().toLocaleDateString('ko-KR'),
-        timeLabel: '18:00 - 20:00 (GitHub Actions 연동 검증)',
-        timestamp: new Date().toLocaleTimeString('ko-KR')
-      };
-      await sendKakaoNotification(process.env.KAKAO_ACCESS_TOKEN, testEvent);
-    } else {
-      console.warn('[GitHub Actions Agent] ⚠️ KAKAO_ACCESS_TOKEN is not set in GitHub Secrets!');
-    }
-
     if (isBookingOpeningMutePeriod()) {
       console.log('[GitHub Actions Agent] 🔇 Mute Window Active (25th 09:00~10:00 KST). Notifications muted.');
     }
@@ -166,7 +151,9 @@ if (process.argv.includes('--cron-once')) {
         if (data && data.slots) {
           processDiff(data.slots, {
             kakaoAccessToken: process.env.KAKAO_ACCESS_TOKEN,
-            discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL
+            discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL,
+            telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
+            telegramChatId: process.env.TELEGRAM_CHAT_ID
           });
         }
       } catch (err) {
