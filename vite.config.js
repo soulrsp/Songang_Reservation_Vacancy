@@ -1,9 +1,12 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
+// GitHub 레포지토리 이름을 자동 인식하여 웹 경로 설정
+const repoName = process.env.GITHUB_REPOSITORY ? process.env.GITHUB_REPOSITORY.split('/')[1] : '';
+const base = repoName ? `/${repoName}/` : './';
+
 export default defineConfig({
-  base: './', // GitHub Pages 서브디렉토리 경로 인식 필수 설정
+  base: base,
   plugins: [react()],
   server: {
     port: 5173,
