@@ -4,7 +4,7 @@ import cron from 'node-cron';
 import dotenv from 'dotenv';
 import { scrapeSonggangTennis } from './crawler.js';
 import { processDiff, getCancellationHistory } from './diffEngine.js';
-import { sendDiscordNotification, sendTelegramNotification } from './notifier.js';
+import { sendDiscordNotification, sendTelegramNotification, sendKakaoNotification } from './notifier.js';
 
 dotenv.config();
 
@@ -23,6 +23,7 @@ if (process.argv.includes('--cron-once')) {
       const data = await scrapeSonggangTennis(todayStr);
       if (data && data.slots) {
         const newEvents = processDiff(data.slots, {
+          kakaoAccessToken: process.env.KAKAO_ACCESS_TOKEN,
           discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL,
           telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
           telegramChatId: process.env.TELEGRAM_CHAT_ID
@@ -32,7 +33,7 @@ if (process.argv.includes('--cron-once')) {
       process.exit(0);
     } catch (err) {
       console.error('[GitHub Actions Cron Agent] Execution Notice:', err.message);
-      process.exit(0); // Exit 0 so GitHub Actions job completes successfully
+      process.exit(0);
     }
   })();
 } else {
@@ -43,6 +44,7 @@ if (process.argv.includes('--cron-once')) {
       const data = await scrapeSonggangTennis(dateStr);
       if (data && data.slots) {
         processDiff(data.slots, {
+          kakaoAccessToken: process.env.KAKAO_ACCESS_TOKEN,
           discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL
         });
       }
@@ -76,6 +78,7 @@ if (process.argv.includes('--cron-once')) {
       const data = await scrapeSonggangTennis(todayStr);
       if (data && data.slots) {
         processDiff(data.slots, {
+          kakaoAccessToken: process.env.KAKAO_ACCESS_TOKEN,
           discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL
         });
       }
