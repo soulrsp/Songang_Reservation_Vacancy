@@ -1,12 +1,11 @@
 import React from 'react';
-import { Activity, Bell, RefreshCw, Sparkles, ExternalLink, MessageCircle } from 'lucide-react';
+import { Activity, Bell, RefreshCw, ExternalLink, MessageCircle } from 'lucide-react';
 
 export default function Navbar({ 
   isMonitoring, 
   lastRefreshed, 
   onRefresh, 
   onOpenSettings, 
-  onSimulateCancellation,
   isRefreshing 
 }) {
   return (
@@ -117,27 +116,6 @@ export default function Navbar({
           >
             <MessageCircle size={14} />
             <span>카톡/알림 설정</span>
-          </button>
-
-          {/* Simulation Trigger (Test Cancelled Slot) */}
-          <button
-            onClick={onSimulateCancellation}
-            title="취소표가 발생했을 때 카카오톡/디스코드 알림이 제대로 날아가는지 테스트합니다."
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              borderRadius: 'var(--radius-sm)',
-              background: 'linear-gradient(135deg, rgba(244, 63, 94, 0.2) 0%, rgba(225, 29, 72, 0.3) 100%)',
-              color: '#FF6B81',
-              fontSize: '13px',
-              fontWeight: '700',
-              border: '1px solid rgba(244, 63, 94, 0.4)'
-            }}
-          >
-            <Sparkles size={14} />
-            <span>취소표 테스트</span>
           </button>
 
           {/* Direct Songgang Reservation Link Button */}
