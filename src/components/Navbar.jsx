@@ -11,48 +11,50 @@ export default function Navbar({
 }) {
   return (
     <header className="glass-panel glow-accent" style={{ margin: '16px 20px 24px 20px', padding: '16px 24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
         
-        {/* Brand & Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        {/* Brand & Logo (Title Only, Subtext removed as requested) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
-            width: '46px',
-            height: '46px',
-            borderRadius: '14px',
+            width: '42px',
+            height: '42px',
+            borderRadius: '12px',
             background: 'linear-gradient(135deg, #CCFF00 0%, #10B981 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '24px',
+            fontSize: '22px',
             boxShadow: '0 0 20px rgba(204, 255, 0, 0.4)'
           }}>
             🎾
           </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h1 style={{ fontSize: '20px', fontWeight: '800', color: '#F8FAFC', letterSpacing: '-0.5px' }}>
-                송강실내테니스장 예약알리미
-              </h1>
-              <span style={{
-                fontSize: '11px',
-                fontWeight: '700',
-                padding: '2px 8px',
-                borderRadius: '12px',
-                background: 'rgba(204, 255, 0, 0.15)',
-                color: '#CCFF00',
-                border: '1px solid rgba(204, 255, 0, 0.3)'
-              }}>
-                PlayMCP Kakao Live
-              </span>
-            </div>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-              대전시설관리공단 송강실내테니스장 예약 현황 & 카카오톡/디스코드 취소표 감지
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h1 style={{ fontSize: '22px', fontWeight: '800', color: '#F8FAFC', letterSpacing: '-0.5px' }}>
+              송강실내테니스장 예약알리미
+            </h1>
+            <span style={{
+              fontSize: '11px',
+              fontWeight: '700',
+              padding: '2px 8px',
+              borderRadius: '12px',
+              background: 'rgba(204, 255, 0, 0.15)',
+              color: '#CCFF00',
+              border: '1px solid rgba(204, 255, 0, 0.3)'
+            }}>
+              PlayMCP Live
+            </span>
           </div>
         </div>
 
-        {/* Live Status Indicator & Action Bar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        {/* Action Buttons & Monitoring Status Badge (Centered Horizontally for Mobile/Desktop) */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          gap: '10px', 
+          flexWrap: 'wrap',
+          width: '100%'
+        }}>
           
           {/* Live Agent Status Badge */}
           <div style={{
