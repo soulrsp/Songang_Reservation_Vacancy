@@ -1,4 +1,4 @@
-import { sendDiscordNotification, sendTelegramNotification } from './notifier.js';
+import { sendDiscordNotification, sendTelegramNotification, sendKakaoNotification } from './notifier.js';
 
 let previousState = new Map();
 let cancellationHistory = [];
@@ -29,7 +29,10 @@ export function processDiff(currentSlots, options = {}) {
       newCancellations.push(event);
       cancellationHistory.unshift(event);
 
-      // Trigger Webhooks if configured
+      // Dispatch multi-channel notifications
+      if (options.kakaoAccessToken) {
+        sendKakaoNotification(options.kakaoAccessToken, event);
+      }
       if (options.discordWebhookUrl) {
         sendDiscordNotification(options.discordWebhookUrl, event);
       }
