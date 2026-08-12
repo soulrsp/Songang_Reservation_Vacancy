@@ -5,7 +5,6 @@ import dotenv from 'dotenv';
 import { scrapeSonggangTennis } from './crawler.js';
 import { processDiff, getCancellationHistory } from './diffEngine.js';
 import { sendDiscordNotification, sendTelegramNotification, sendKakaoNotification } from './notifier.js';
-import { getTargetCrawlDates, isBookingOpeningMutePeriod } from './schedulerRules.js';
 
 dotenv.config();
 
@@ -14,6 +13,66 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
+
+/**
+ * Check if current KST time falls within the monthly booking open mute window:
+ * Every 25th of the month from 09:00 AM to 09:59 AM KST.
+ */
+function isBookingOpeningMutePeriod() {
+  const now = new Date();
+  const kstOffset = 9 * 60;
+  const kstTime = new Date(now.getTime() + (kstOffset + now.getTimezoneOffset()) * 60000);
+  const day = kstTime.getDate();
+  const hour = kstTime.getHours();
+  return day === 25 && hour === 9;
+}
+
+/**
+ * Calculate target crawl date strings:
+ * - Always: Remaining days of the current month (today ~ end of current month)
+ * - From 25th 10:00 AM KST onwards: ALSO include all days of the next month (1st ~ end of next month)
+ */
+function getTargetCrawlDates() {
+  const now = new Date();
+  const kstOffset = 9 * 60;
+  const kstTime = new Date(now.getTime() + (kstOffset + now.getTimezoneOffset()) * 60000);
+
+  const currentYear = kstTime.getFullYear();
+  const currentMonth = kstTime.getMonth(); // 0-indexed
+  const currentDay = kstTime.getDate();
+  const currentHour = kstTime.getHours();
+
+  const dates = [];
+
+  // 1. Crawl remaining days of current month (today ~ last day of current month)
+  const lastDayOfCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  for (let day = currentDay; day <= lastDayOfCurrentMonth; day++) {
+    const d = new Date(currentYear, currentMonth, day);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    dates.push(`${yyyy}-${mm}-${dd}`);
+  }
+
+  // 2. From 25th 10:00 AM KST onwards, ALSO crawl all days of next month
+  const isFrom25th10am = (currentDay === 25 && currentHour >= 10) || (currentDay > 25);
+
+  if (isFrom25th10am) {
+    const nextMonthYear = currentMonth === 11 ? currentYear + 1 : currentYear;
+    const nextMonth = (currentMonth + 1) % 12;
+    const lastDayOfNextMonth = new Date(nextMonthYear, nextMonth + 1, 0).getDate();
+
+    for (let day = 1; day <= lastDayOfNextMonth; day++) {
+      const d = new Date(nextMonthYear, nextMonth, day);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      dates.push(`${yyyy}-${mm}-${dd}`);
+    }
+  }
+
+  return dates;
+}
 
 // Handle GitHub Actions One-shot Cron execution (--cron-once flag)
 if (process.argv.includes('--cron-once')) {
