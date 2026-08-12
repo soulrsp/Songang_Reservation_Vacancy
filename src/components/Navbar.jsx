@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Bell, RefreshCw, ExternalLink, MessageCircle } from 'lucide-react';
+import { Bell, RefreshCw, ExternalLink } from 'lucide-react';
 
 export default function Navbar({ 
   isMonitoring, 
@@ -46,52 +46,52 @@ export default function Navbar({
           </div>
         </div>
 
-        {/* Action Buttons & Monitoring Status Badge (Responsive Grid/Flex for Mobile & Desktop) */}
-        <div className="mobile-nav-buttons" style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
+        {/* Live Agent Status Badge */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
           justifyContent: 'center',
-          gap: '10px', 
-          flexWrap: 'wrap',
-          width: '100%'
+          gap: '8px',
+          padding: '6px 14px',
+          borderRadius: 'var(--radius-full)',
+          background: 'rgba(16, 185, 129, 0.12)',
+          border: '1px solid rgba(16, 185, 129, 0.3)',
+          fontSize: '12px',
+          color: '#10B981',
+          fontWeight: '600'
         }}>
-          
-          {/* Live Agent Status Badge */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            padding: '8px 14px',
-            borderRadius: 'var(--radius-full)',
-            background: 'rgba(16, 185, 129, 0.12)',
-            border: '1px solid rgba(16, 185, 129, 0.3)',
-            fontSize: '12px',
-            color: '#10B981',
-            fontWeight: '600'
-          }} className="mobile-full-btn">
-            <span className="live-indicator"></span>
-            <span>송강 테니스 감지 중</span>
-            <span style={{ fontSize: '11px', opacity: 0.8 }}>
-              ({lastRefreshed ? lastRefreshed.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '초기화'})
-            </span>
-          </div>
+          <span className="live-indicator"></span>
+          <span>송강 테니스 감지 중</span>
+          <span style={{ fontSize: '11px', opacity: 0.8 }}>
+            ({lastRefreshed ? lastRefreshed.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '초기화'})
+          </span>
+        </div>
+
+        {/* Action Buttons — always one horizontal row */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '10px',
+          flexWrap: 'nowrap'
+        }}>
 
           {/* Manual Refresh Button */}
-          <button 
+          <button
             onClick={onRefresh}
             disabled={isRefreshing}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '8px 14px',
+              padding: '8px 16px',
               borderRadius: 'var(--radius-sm)',
               background: 'rgba(30, 41, 59, 0.8)',
               color: '#F8FAFC',
               fontSize: '13px',
               fontWeight: '600',
-              border: '1px solid var(--border-color)'
+              border: '1px solid var(--border-color)',
+              whiteSpace: 'nowrap'
             }}
           >
             <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
@@ -105,17 +105,18 @@ export default function Navbar({
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '8px 14px',
+              padding: '8px 16px',
               borderRadius: 'var(--radius-sm)',
               background: 'var(--primary-accent)',
               color: '#0B0F17',
               fontSize: '13px',
               fontWeight: '700',
-              boxShadow: '0 0 15px rgba(204, 255, 0, 0.3)'
+              boxShadow: '0 0 15px rgba(204, 255, 0, 0.3)',
+              whiteSpace: 'nowrap'
             }}
           >
-            <MessageCircle size={14} />
-            <span>카톡/알림 설정</span>
+            <Bell size={14} />
+            <span>알림 설정</span>
           </button>
 
           {/* Direct Songgang Reservation Link Button */}
@@ -127,14 +128,15 @@ export default function Navbar({
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '8px 14px',
+              padding: '8px 16px',
               borderRadius: 'var(--radius-sm)',
               background: 'rgba(255, 255, 255, 0.06)',
               color: 'var(--text-muted)',
               fontSize: '13px',
               fontWeight: '600',
               textDecoration: 'none',
-              border: '1px solid var(--border-color)'
+              border: '1px solid var(--border-color)',
+              whiteSpace: 'nowrap'
             }}
           >
             <span>송강 예약 이동</span>
