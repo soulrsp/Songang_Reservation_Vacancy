@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
-import { Calendar, CheckCircle2, Clock, Filter, AlertTriangle, ExternalLink, Zap, X, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, Filter, AlertTriangle, ExternalLink, Zap, X, ChevronRight, ChevronLeft, BellRing } from 'lucide-react';
 
 export default function CourtSchedule({ 
   selectedDate, 
   onDateChange, 
   scheduleData, 
+  cancellationLogs = [],
   onSlotClick 
 }) {
-  const [selectedCourt, setSelectedCourt] = useState('ALL');
-  const [selectedTimeRange, setSelectedTimeRange] = useState('ALL');
-  const [onlyAvailable, setOnlyAvailable] = useState(false);
-
   // Detail List Modal State ('available' | 'cancelled' | null)
   const [listModalType, setListModalType] = useState(null);
 
@@ -60,23 +57,9 @@ export default function CourtSchedule({
     }
   };
 
-  const { courts = [], timeSlots = [], slots = [] } = scheduleData || {};
+  const { slots = [] } = scheduleData || {};
 
-  // Filter slots
-  const filteredSlots = slots.filter(slot => {
-    if (selectedCourt !== 'ALL' && slot.courtId !== selectedCourt) return false;
-    
-    if (onlyAvailable && slot.status === 'reserved') return false;
-    
-    const slotHour = parseInt(slot.timeId.replace('t', ''));
-    if (selectedTimeRange === 'MORNING' && (slotHour < 6 || slotHour >= 12)) return false;
-    if (selectedTimeRange === 'AFTERNOON' && (slotHour < 12 || slotHour >= 18)) return false;
-    if (selectedTimeRange === 'NIGHT' && (slotHour < 18 || slotHour > 22)) return false;
-    
-    return true;
-  });
-
-  // Calculate statistics
+  // Calculate statistics & slot lists
   const totalSlotsCount = slots.length;
   const availableSlotsList = slots.filter(s => s.status === 'available');
   const cancelledSlotsList = slots.filter(s => s.status === 'cancelled');
@@ -86,7 +69,7 @@ export default function CourtSchedule({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
-      {/* Date Switcher (Full Month 1st ~ 31st Pill Bar) */}
+      {/* Date Switcher & Month Header */}
       <div className="glass-panel" style={{ padding: '20px 24px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           
@@ -111,7 +94,7 @@ export default function CourtSchedule({
                   {currentYear}년 {currentMonth + 1}월 전체 날짜 (1일 ~ {totalDaysCount}일)
                 </h3>
                 <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                  월간 전체 날짜를 선택하여 실시간 대관 현황을 확인하세요.
+                  날짜를 선택하여 실시간 예약 가능 및 취소표 현황을 확인하세요.
                 </p>
               </div>
             </div>
@@ -278,7 +261,7 @@ export default function CourtSchedule({
                 <CheckCircle2 size={20} />
               </div>
               <div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>예약 가능 슬롯 (클릭시 목록)</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>예약 가능 슬롯 (클릭시 팝업)</div>
                 <div style={{ fontSize: '22px', fontWeight: '800', color: '#10B981' }}>
                   {availableSlotsList.length}개
                 </div>
@@ -326,7 +309,7 @@ export default function CourtSchedule({
                 <Zap size={20} />
               </div>
               <div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>방금 생성된 취소표 (클릭시 목록)</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>방금 생성된 취소표 (클릭시 팝업)</div>
                 <div style={{ fontSize: '22px', fontWeight: '800', color: '#FF6B81' }}>
                   {cancelledSlotsList.length}개
                 </div>
@@ -368,215 +351,258 @@ export default function CourtSchedule({
         </div>
       </div>
 
-      {/* Filter Control Bar */}
-      <div className="glass-panel" style={{ padding: '14px 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '13px', fontWeight: '600' }}>
-              <Filter size={15} />
-              <span>조건 필터:</span>
+      {/* Main Container: 1. Available Slots List (Top) & 2. Cancelled Logs Stream (Bottom) */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        
+        {/* Section 1: Available Slots List (예약 가능 슬롯 리스트) */}
+        <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '8px',
+                background: 'rgba(16, 185, 129, 0.15)',
+                color: '#10B981',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <CheckCircle2 size={18} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#F8FAFC' }}>
+                  실시간 예약 가능 슬롯 목록
+                </h3>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                  {selectedDate} 기준 현재 예약 신청 가능한 송강실내테니스장 슬롯
+                </p>
+              </div>
             </div>
 
-            {/* Court Filter */}
-            <select
-              value={selectedCourt}
-              onChange={(e) => setSelectedCourt(e.target.value)}
+            <button
+              onClick={() => setListModalType('available')}
               style={{
-                background: 'rgba(15, 23, 42, 0.8)',
-                color: '#F8FAFC',
-                border: '1px solid var(--border-color)',
-                padding: '6px 12px',
+                fontSize: '12px',
+                padding: '4px 10px',
                 borderRadius: 'var(--radius-sm)',
-                fontSize: '13px'
+                background: 'rgba(16, 185, 129, 0.15)',
+                color: '#10B981',
+                fontWeight: '700',
+                border: '1px solid rgba(16, 185, 129, 0.3)'
               }}
             >
-              <option value="ALL">전체 코트 (1~4번 코트)</option>
-              <option value="songgang-1">1번 코트 (실내)</option>
-              <option value="songgang-2">2번 코트 (실내)</option>
-              <option value="songgang-3">3번 코트 (실내)</option>
-              <option value="songgang-4">4번 코트 (실내)</option>
-            </select>
-
-            {/* Time Filter */}
-            <select
-              value={selectedTimeRange}
-              onChange={(e) => setSelectedTimeRange(e.target.value)}
-              style={{
-                background: 'rgba(15, 23, 42, 0.8)',
-                color: '#F8FAFC',
-                border: '1px solid var(--border-color)',
-                padding: '6px 12px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '13px'
-              }}
-            >
-              <option value="ALL">전체 시간대 (06:00 ~ 22:00)</option>
-              <option value="MORNING">오전 (06:00 ~ 12:00)</option>
-              <option value="AFTERNOON">오후 (12:00 ~ 18:00)</option>
-              <option value="NIGHT">야간 (18:00 ~ 22:00)</option>
-            </select>
+              팝업으로 보기
+            </button>
           </div>
 
-          {/* Toggle Available Only */}
-          <label style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            cursor: 'pointer',
-            fontSize: '13px',
-            color: onlyAvailable ? '#10B981' : 'var(--text-muted)',
-            fontWeight: '600',
-            userSelect: 'none'
-          }}>
-            <input 
-              type="checkbox"
-              checked={onlyAvailable}
-              onChange={(e) => setOnlyAvailable(e.target.checked)}
-              style={{ accentColor: '#10B981', width: '16px', height: '16px', cursor: 'pointer' }}
-            />
-            <span>예약 가능한 슬롯만 보기</span>
-          </label>
-
-        </div>
-      </div>
-
-      {/* Court Schedule Matrix / Cards View */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {courts.filter(c => selectedCourt === 'ALL' || c.id === selectedCourt).map(court => {
-          const courtSlots = filteredSlots.filter(s => s.courtId === court.id);
-          
-          return (
-            <div key={court.id} className="glass-panel" style={{ padding: '20px' }}>
-              
-              {/* Court Header */}
-              <div style={{ 
-                display: 'flex', 
-                justify: 'space-between', 
-                alignItems: 'center', 
-                marginBottom: '16px',
-                borderBottom: '1px solid var(--border-color)',
-                paddingBottom: '12px'
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '300px', overflowY: 'auto' }}>
+            {availableSlotsList.length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '30px 10px',
+                color: 'var(--text-muted)',
+                fontSize: '13px',
+                background: 'rgba(15, 23, 42, 0.4)',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px dashed var(--border-color)'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '18px' }}>🎾</span>
-                  <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#F8FAFC' }}>
-                    {court.name}
-                  </h3>
-                  <span style={{
-                    fontSize: '12px',
-                    padding: '2px 8px',
-                    borderRadius: 'var(--radius-full)',
-                    background: 'rgba(255, 255, 255, 0.08)',
-                    color: 'var(--text-muted)'
-                  }}>
-                    {court.surface}
-                  </span>
-                </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                  예약 가능: <strong style={{ color: '#10B981' }}>{courtSlots.filter(s => s.status !== 'reserved').length}</strong> / {courtSlots.length}개
-                </div>
+                선택하신 날짜({selectedDate})에는 현재 예약 가능한 오픈 슬롯이 없습니다.<br/>
+                실시간으로 취소표가 발생하는 즉시 알림이 발송됩니다. 🎾
               </div>
-
-              {/* Time Slot Cards Grid */}
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', 
-                gap: '12px' 
-              }}>
-                {courtSlots.map(slot => {
-                  const isAvailable = slot.status === 'available';
-                  const isCancelled = slot.status === 'cancelled';
-                  const isReserved = slot.status === 'reserved';
-
-                  let cardBg = 'rgba(30, 41, 59, 0.4)';
-                  let borderColor = 'var(--border-color)';
-                  let statusText = '예약 완료';
-                  let statusColor = 'var(--text-muted)';
-
-                  if (isAvailable) {
-                    cardBg = 'rgba(16, 185, 129, 0.12)';
-                    borderColor = 'rgba(16, 185, 129, 0.35)';
-                    statusText = '예약 가능';
-                    statusColor = '#10B981';
-                  } else if (isCancelled) {
-                    cardBg = 'rgba(244, 63, 94, 0.2)';
-                    borderColor = 'rgba(244, 63, 94, 0.6)';
-                    statusText = '방금 취소됨!';
-                    statusColor = '#FF6B81';
-                  }
-
-                  return (
-                    <div
-                      key={slot.id}
-                      onClick={() => !isReserved && onSlotClick(slot)}
-                      className={isCancelled ? 'cancelled-flash' : ''}
-                      style={{
-                        background: cardBg,
-                        border: `1px solid ${borderColor}`,
-                        borderRadius: 'var(--radius-sm)',
-                        padding: '12px 14px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justify: 'space-between',
-                        minHeight: '84px',
-                        cursor: isReserved ? 'not-allowed' : 'pointer',
-                        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                        boxShadow: isCancelled ? '0 0 15px rgba(244, 63, 94, 0.3)' : 'none'
-                      }}
-                      onMouseOver={(e) => {
-                        if (!isReserved) {
-                          e.currentTarget.style.transform = 'translateY(-2px)';
-                          e.currentTarget.style.boxShadow = isAvailable ? '0 4px 20px rgba(16, 185, 129, 0.25)' : '0 4px 20px rgba(244, 63, 94, 0.4)';
-                        }
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = isCancelled ? '0 0 15px rgba(244, 63, 94, 0.3)' : 'none';
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#F8FAFC' }}>
-                          {slot.timeLabel}
-                        </div>
-                        {isCancelled && <span style={{ fontSize: '12px' }}>✨</span>}
+            ) : (
+              availableSlotsList.map(slot => (
+                <div
+                  key={slot.id}
+                  style={{
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '12px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      background: 'rgba(16, 185, 129, 0.2)',
+                      color: '#10B981',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '14px',
+                      flexShrink: 0
+                    }}>
+                      🎾
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: '800', color: '#F8FAFC' }}>
+                        {slot.courtName} - {slot.timeLabel}
                       </div>
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-                        <span style={{
-                          fontSize: '12px',
-                          fontWeight: '700',
-                          color: statusColor,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}>
-                          {isAvailable && <CheckCircle2 size={12} />}
-                          {isCancelled && <Zap size={12} />}
-                          {statusText}
-                        </span>
-
-                        {!isReserved && (
-                          <span style={{
-                            fontSize: '11px',
-                            color: statusColor,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '2px',
-                            fontWeight: '600'
-                          }}>
-                            예약 <ExternalLink size={10} />
-                          </span>
-                        )}
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        {slot.date || selectedDate} | {slot.surface} | <strong style={{ color: '#10B981' }}>예약 가능</strong>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
 
+                  <button
+                    onClick={() => onSlotClick(slot)}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'var(--primary-accent)',
+                      color: '#0B0F17',
+                      fontSize: '12px',
+                      fontWeight: '800',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      whiteSpace: 'nowrap',
+                      boxShadow: '0 0 10px rgba(204, 255, 0, 0.3)'
+                    }}
+                  >
+                    <span>예약하기</span>
+                    <ChevronRight size={12} />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Section 2: Cancelled Logs Stream (취소표 발생 로그) */}
+        <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '8px',
+                background: 'rgba(244, 63, 94, 0.15)',
+                color: '#FF6B81',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <BellRing size={18} className="animate-pulse-glow" />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#F8FAFC' }}>
+                  실시간 취소표 발생 로그
+                </h3>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                  누군가 예약을 취소한 최근 빈자리 감지 내역
+                </p>
+              </div>
             </div>
-          );
-        })}
+            
+            <button
+              onClick={() => setListModalType('cancelled')}
+              style={{
+                fontSize: '12px',
+                padding: '4px 10px',
+                borderRadius: 'var(--radius-sm)',
+                background: 'rgba(244, 63, 94, 0.2)',
+                color: '#FF6B81',
+                fontWeight: '700',
+                border: '1px solid rgba(244, 63, 94, 0.3)'
+              }}
+            >
+              팝업으로 보기
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '300px', overflowY: 'auto' }}>
+            {cancellationLogs.length === 0 ? (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '30px 10px', 
+                color: 'var(--text-muted)', 
+                fontSize: '13px',
+                background: 'rgba(15, 23, 42, 0.4)',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px dashed var(--border-color)'
+              }}>
+                아직 감지된 취소표 내역이 없습니다.<br/>
+                에이전트가 실시간 모니터링 중입니다. 🎾
+              </div>
+            ) : (
+              cancellationLogs.map(log => (
+                <div
+                  key={log.id}
+                  style={{
+                    background: 'rgba(244, 63, 94, 0.1)',
+                    border: '1px solid rgba(244, 63, 94, 0.3)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '12px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      background: 'rgba(244, 63, 94, 0.2)',
+                      color: '#FF6B81',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '14px',
+                      flexShrink: 0
+                    }}>
+                      ⚡
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: '800', color: '#F8FAFC' }}>
+                        {log.courtName} - {log.timeLabel}
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>{log.date}</span>
+                        <span>•</span>
+                        <span style={{ color: '#FF6B81', fontWeight: '600' }}>{log.timestamp} 감지됨</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => onSlotClick({
+                      courtName: log.courtName,
+                      timeLabel: log.timeLabel,
+                      date: log.date,
+                      status: 'cancelled'
+                    })}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'var(--primary-accent)',
+                      color: '#0B0F17',
+                      fontSize: '12px',
+                      fontWeight: '800',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      whiteSpace: 'nowrap',
+                      boxShadow: '0 0 10px rgba(204, 255, 0, 0.3)'
+                    }}
+                  >
+                    <span>예약하기</span>
+                    <ChevronRight size={12} />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
       </div>
 
       {/* Detail List Popup Modal */}
@@ -620,10 +646,10 @@ export default function CourtSchedule({
                 </div>
                 <div>
                   <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#F8FAFC' }}>
-                    {listModalType === 'available' ? '예약 가능 슬롯 목록' : '방금 생성된 취소표 목록'}
+                    {listModalType === 'available' ? `[${selectedDate}] 예약 가능한 슬롯 목록` : `[${selectedDate}] 방금 생성된 취소표 목록`}
                   </h3>
                   <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                    {selectedDate} 기준 (총 {modalSlotList.length}개 발견)
+                    총 {modalSlotList.length}개 발견
                   </p>
                 </div>
               </div>
