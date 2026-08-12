@@ -10,26 +10,27 @@ export default function Navbar({
   isRefreshing 
 }) {
   return (
-    <header className="glass-panel glow-accent" style={{ margin: '16px 20px 24px 20px', padding: '16px 24px' }}>
+    <header className="glass-panel glow-accent mobile-header-container" style={{ margin: '16px 20px 24px 20px', padding: '16px 24px' }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
         
-        {/* Brand & Logo (Title Only, Subtext removed as requested) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Brand & Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
-            width: '42px',
-            height: '42px',
+            width: '40px',
+            height: '40px',
             borderRadius: '12px',
             background: 'linear-gradient(135deg, #CCFF00 0%, #10B981 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '22px',
-            boxShadow: '0 0 20px rgba(204, 255, 0, 0.4)'
+            fontSize: '20px',
+            boxShadow: '0 0 20px rgba(204, 255, 0, 0.4)',
+            flexShrink: 0
           }}>
             🎾
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <h1 style={{ fontSize: '22px', fontWeight: '800', color: '#F8FAFC', letterSpacing: '-0.5px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <h1 style={{ fontSize: '20px', fontWeight: '800', color: '#F8FAFC', letterSpacing: '-0.5px' }}>
               송강실내테니스장 예약알리미
             </h1>
             <span style={{
@@ -46,8 +47,8 @@ export default function Navbar({
           </div>
         </div>
 
-        {/* Action Buttons & Monitoring Status Badge (Centered Horizontally for Mobile/Desktop) */}
-        <div style={{ 
+        {/* Action Buttons & Monitoring Status Badge (Responsive Grid/Flex for Mobile & Desktop) */}
+        <div className="mobile-nav-buttons" style={{ 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center',
@@ -60,19 +61,20 @@ export default function Navbar({
           <div style={{
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'center',
             gap: '8px',
             padding: '8px 14px',
             borderRadius: 'var(--radius-full)',
             background: 'rgba(16, 185, 129, 0.12)',
             border: '1px solid rgba(16, 185, 129, 0.3)',
-            fontSize: '13px',
+            fontSize: '12px',
             color: '#10B981',
             fontWeight: '600'
-          }}>
+          }} className="mobile-full-btn">
             <span className="live-indicator"></span>
             <span>송강 테니스 감지 중</span>
-            <span style={{ fontSize: '11px', opacity: 0.8, marginLeft: '4px' }}>
-              ({lastRefreshed ? lastRefreshed.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '초기화 중'})
+            <span style={{ fontSize: '11px', opacity: 0.8 }}>
+              ({lastRefreshed ? lastRefreshed.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '초기화'})
             </span>
           </div>
 
@@ -93,8 +95,28 @@ export default function Navbar({
               border: '1px solid var(--border-color)'
             }}
           >
-            <RefreshCw size={15} className={isRefreshing ? 'animate-spin' : ''} />
+            <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
             <span>새로고침</span>
+          </button>
+
+          {/* Settings Modal Button */}
+          <button
+            onClick={onOpenSettings}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 14px',
+              borderRadius: 'var(--radius-sm)',
+              background: 'var(--primary-accent)',
+              color: '#0B0F17',
+              fontSize: '13px',
+              fontWeight: '700',
+              boxShadow: '0 0 15px rgba(204, 255, 0, 0.3)'
+            }}
+          >
+            <MessageCircle size={14} />
+            <span>카톡/알림 설정</span>
           </button>
 
           {/* Simulation Trigger (Test Cancelled Slot) */}
@@ -114,28 +136,8 @@ export default function Navbar({
               border: '1px solid rgba(244, 63, 94, 0.4)'
             }}
           >
-            <Sparkles size={15} />
-            <span>취소표 알림 테스트</span>
-          </button>
-
-          {/* Settings Modal Button */}
-          <button
-            onClick={onOpenSettings}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--primary-accent)',
-              color: '#0B0F17',
-              fontSize: '13px',
-              fontWeight: '700',
-              boxShadow: '0 0 15px rgba(204, 255, 0, 0.3)'
-            }}
-          >
-            <MessageCircle size={15} />
-            <span>카톡/알림 설정</span>
+            <Sparkles size={14} />
+            <span>취소표 테스트</span>
           </button>
 
           {/* Direct Songgang Reservation Link Button */}
@@ -157,7 +159,7 @@ export default function Navbar({
               border: '1px solid var(--border-color)'
             }}
           >
-            <span>송강 예약 사이트</span>
+            <span>송강 예약 이동</span>
             <ExternalLink size={13} />
           </a>
 
