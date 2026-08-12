@@ -1,4 +1,7 @@
 import axios from 'axios';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
 const SONGGANG_URL = 'https://www.djsiseol.or.kr/res/www/121';
 
@@ -46,6 +49,13 @@ export async function sendKakaoNotification(rawToken, cancellationEvent) {
         });
         if (rfRes.data && rfRes.data.access_token) {
           accessToken = rfRes.data.access_token;
+          const newRefreshToken = rfRes.data.refresh_token;
+          // Save new refresh token to local credentials.json
+          updateLocalCredentials(accessToken, newRefreshToken);
+          // Auto-update GitHub Secrets with new refresh token (prevents next 401)
+          if (newRefreshToken) {
+            await updateGitHubSecret('KAKAO_ACCESS_TOKEN', newRefreshToken);
+          }
         }
       } catch (rfErr) {
         // Fallback to raw token
@@ -112,6 +122,87 @@ export async function sendKakaoNotification(rawToken, cancellationEvent) {
     console.error('[Notifier] ❌ KakaoTalk Notification Error:', errMsg);
     return false;
   }
+}
+
+/**
+ * Update local mcporter credentials.json with fresh tokens
+ */
+function updateLocalCredentials(accessToken, refreshToken) {
+  try {
+    const hash = '92ef5a9fd655a681';
+    const credsDir = path.join(os.homedir(), '.mcporter');
+    if (!fs.existsSync(credsDir)) fs.mkdirSync(credsDir, { recursive: true });
+    const credsPath = path.join(credsDir, 'credentials.json');
+    const creds = {
+      version: 2,
+      entries: {
+        ['mcp-gateway|' + hash]: {
+          serverName: 'mcp-gateway',
+          serverUrl: 'https://playmcp.kakao.com/mcp',
+          tokens: {
+            access_token: accessToken,
+            refresh_token: refreshToken,
+            token_type: 'Bearer',
+            expires_in: 43199,
+            scope: 'default',
+            issuer: 'https://playauth.kakao.com/playmcp',
+            expires_at: Math.floor(Date.now() / 1000) + 43199
+          },
+          clientInfo: {
+            client_id: 'HElMUWdVoroTsrXxezeTSemg8gXzzCKWARb5MJux8gY',
+            issuer: 'https://playauth.kakao.com/playmcp'
+          },
+          updatedAt: new Date().toISOString(),
+          authorizationServerUrl: 'https://playauth.kakao.com/playmcp',
+          resourceUrl: 'https://playmcp.kakao.com/mcp'
+        }
+      },
+      serverUrls: { 'mcp-gateway': 'https://playmcp.kakao.com/mcp' }
+    };
+    fs.writeFileSync(credsPath, JSON.stringify(creds, null, 2));
+  } catch (e) { /* silent */ }
+}
+
+/**
+ * Auto-update GitHub Secrets via GH_PAT (prevents token expiry 401)
+ */
+async function updateGitHubSecret(secretName, secretValue) {
+  const ghPat = process.env.GH_PAT;
+  const ghRepo = process.env.GITHUB_REPOSITORY; // e.g. soulrsp/Songang_Reservation_Vacancy
+  if (!ghPat || !ghRepo) return;
+
+  try {
+    // 1. Get repo public key for secret encryption
+    const keyRes = await axios.get(
+      `https://api.github.com/repos/${ghRepo}/actions/secrets/public-key`,
+      { headers: { 'Authorization': `Bearer ${ghPat}`, 'Accept': 'application/vnd.github+json' } }
+    );
+    const { key, key_id } = keyRes.data;
+
+    // 2. Encrypt the secret value using libsodium (via tweetnacl)
+    const { encryptedValue } = await encryptSecret(key, secretValue);
+
+    // 3. Update the secret
+    await axios.put(
+      `https://api.github.com/repos/${ghRepo}/actions/secrets/${secretName}`,
+      { encrypted_value: encryptedValue, key_id },
+      { headers: { 'Authorization': `Bearer ${ghPat}`, 'Accept': 'application/vnd.github+json' } }
+    );
+    console.log(`[Notifier] 🔑 GitHub Secret '${secretName}' auto-updated with new refresh token!`);
+  } catch (e) { /* silent - don't block notification */ }
+}
+
+/**
+ * Encrypt secret value for GitHub API using libsodium-wrappers
+ */
+async function encryptSecret(base64Key, secretValue) {
+  // Dynamic import for ESM compatibility
+  const sodium = await import('libsodium-wrappers').then(m => m.default || m);
+  await sodium.ready;
+  const keyBytes = sodium.from_base64(base64Key, sodium.base64_variants.ORIGINAL);
+  const messageBytes = sodium.from_string(secretValue);
+  const encryptedBytes = sodium.crypto_box_seal(messageBytes, keyBytes);
+  return { encryptedValue: sodium.to_base64(encryptedBytes, sodium.base64_variants.ORIGINAL) };
 }
 
 /**
