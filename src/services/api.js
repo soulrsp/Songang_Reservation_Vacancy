@@ -3,9 +3,9 @@
 const SONGGANG_LIVE_URL = 'https://www.djsiseol.or.kr/res/www/121';
 
 /**
- * Real-world baseline initial schedule generator for Songgang Indoor Tennis Court
- * Default policy: All slots default to 'reserved' (예약 완료) for strict accuracy.
- * Only genuine open slots confirmed by crawler or user simulation will change to 'available' / 'cancelled'.
+ * 100% Strict Real-World Initial Schedule Generator
+ * Strict Policy: ALL slots default to 'reserved' (예약 완료/마감).
+ * Absolute zero mock/fake open slots. Every court, every time slot is locked as reserved by default.
  */
 export function generateSonggangSchedule(dateStr) {
   const courts = [
@@ -31,19 +31,7 @@ export function generateSonggangSchedule(dateStr) {
 
   courts.forEach(court => {
     timeSlots.forEach(slot => {
-      // Strict accuracy policy: Default to 'reserved' (예약 완료) unless confirmed open.
-      // Early morning (06시) or midday (12시) may have rare open slots.
-      let status = 'reserved'; 
-      
-      const charSum = dateStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      const slotNum = parseInt(slot.id.replace('t', ''));
-      const seed = charSum + court.id.charCodeAt(9) + slotNum;
-
-      // Realistic strict availability (only 1 or 2 slots open per day)
-      if ((slotNum === 6 && seed % 3 === 0) || (slotNum === 12 && seed % 4 === 0)) {
-        status = 'available';
-      }
-
+      // 100% Strict Policy: ZERO fake open slots. Every slot is strictly 'reserved'.
       result.push({
         id: `${dateStr}_${court.id}_${slot.id}`,
         courtId: court.id,
@@ -52,7 +40,7 @@ export function generateSonggangSchedule(dateStr) {
         timeId: slot.id,
         timeLabel: slot.time,
         date: dateStr,
-        status: status,
+        status: 'reserved',
         updatedAt: new Date().toISOString()
       });
     });
@@ -68,7 +56,7 @@ export async function fetchCourtSchedule(dateStr) {
       return await res.json();
     }
   } catch (err) {
-    // Client-side execution
+    // Client-side fallback
   }
   return generateSonggangSchedule(dateStr);
 }
@@ -83,7 +71,7 @@ export async function fetchCancellationLogs() {
     // Client-side fallback
   }
 
-  return []; // Empty initial log stream until actual cancellations occur
+  return [];
 }
 
 // PlayMCP & KakaoTalk Notification Test Function
