@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, CheckCircle2, Clock, Filter, AlertTriangle, ExternalLink, Zap, X, ChevronRight } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, Filter, AlertTriangle, ExternalLink, Zap, X, ChevronRight, ChevronLeft } from 'lucide-react';
 
 export default function CourtSchedule({ 
   selectedDate, 
@@ -14,25 +14,51 @@ export default function CourtSchedule({
   // Detail List Modal State ('available' | 'cancelled' | null)
   const [listModalType, setListModalType] = useState(null);
 
-  // Generate date shortcuts (Today, Tomorrow, Day after)
-  const today = new Date();
-  const dateOptions = [0, 1, 2, 3, 4, 5, 6].map(offset => {
-    const d = new Date(today);
-    d.setDate(today.getDate() + offset);
+  // Current viewed month state (Year, Month index: 0-11)
+  const currentDateObj = new Date(selectedDate || Date.now());
+  const [currentYear, setCurrentYear] = useState(currentDateObj.getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(currentDateObj.getMonth()); // 0-indexed
+
+  // Generate all days for the entire month (1st to 31st)
+  const daysInMonth = [];
+  const totalDaysCount = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+  for (let day = 1; day <= totalDaysCount; day++) {
+    const d = new Date(currentYear, currentMonth, day);
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
     const dateStr = `${yyyy}-${mm}-${dd}`;
-    
-    let label = `${mm}/${dd}`;
-    if (offset === 0) label = `오늘 (${mm}/${dd})`;
-    else if (offset === 1) label = `내일 (${mm}/${dd})`;
-    
+
     const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
     const dayName = dayNames[d.getDay()];
 
-    return { dateStr, label: `${label} (${dayName})` };
-  });
+    const todayStr = new Date().toISOString().split('T')[0];
+    let label = `${parseInt(mm)}/${dd} (${dayName})`;
+    if (dateStr === todayStr) {
+      label = `오늘 (${parseInt(mm)}/${dd})`;
+    }
+
+    daysInMonth.push({ dateStr, label, day, isToday: dateStr === todayStr });
+  }
+
+  const handlePrevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentYear(prev => prev - 1);
+      setCurrentMonth(11);
+    } else {
+      setCurrentMonth(prev => prev - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentYear(prev => prev + 1);
+      setCurrentMonth(0);
+    } else {
+      setCurrentMonth(prev => prev + 1);
+    }
+  };
 
   const { courts = [], timeSlots = [], slots = [] } = scheduleData || {};
 
@@ -60,52 +86,147 @@ export default function CourtSchedule({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
-      {/* Date Switcher & Summary Stats Header */}
+      {/* Date Switcher (Full Month 1st ~ 31st Pill Bar) */}
       <div className="glass-panel" style={{ padding: '20px 24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           
-          {/* Date Selector Tabs */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-            <Calendar size={18} style={{ color: 'var(--primary-accent)', flexShrink: 0, marginRight: '4px' }} />
-            {dateOptions.map(opt => {
+          {/* Month Header Switcher */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '10px',
+                background: 'rgba(204, 255, 0, 0.15)',
+                color: 'var(--primary-accent)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Calendar size={20} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#F8FAFC' }}>
+                  {currentYear}년 {currentMonth + 1}월 전체 날짜 (1일 ~ {totalDaysCount}일)
+                </h3>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                  월간 전체 날짜를 선택하여 실시간 대관 현황을 확인하세요.
+                </p>
+              </div>
+            </div>
+
+            {/* Month Nav Buttons & Direct Picker */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                onClick={handlePrevMonth}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(30, 41, 59, 0.8)',
+                  color: '#F8FAFC',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  border: '1px solid var(--border-color)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <ChevronLeft size={14} />
+                <span>이전달</span>
+              </button>
+
+              <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--primary-accent)', padding: '0 4px' }}>
+                {currentMonth + 1}월
+              </span>
+
+              <button
+                onClick={handleNextMonth}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(30, 41, 59, 0.8)',
+                  color: '#F8FAFC',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  border: '1px solid var(--border-color)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <span>다음달</span>
+                <ChevronRight size={14} />
+              </button>
+
+              <input 
+                type="date" 
+                value={selectedDate}
+                onChange={(e) => {
+                  onDateChange(e.target.value);
+                  const d = new Date(e.target.value);
+                  setCurrentYear(d.getFullYear());
+                  setCurrentMonth(d.getMonth());
+                }}
+                style={{
+                  background: 'rgba(15, 23, 42, 0.8)',
+                  color: '#F8FAFC',
+                  border: '1px solid var(--border-color)',
+                  padding: '6px 10px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '12px',
+                  marginLeft: '6px'
+                }}
+              />
+            </div>
+
+          </div>
+
+          {/* Horizontally Scrollable Full Month Days (1 ~ 31) */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            overflowX: 'auto', 
+            padding: '4px 0 8px 0',
+            scrollbarWidth: 'thin'
+          }}>
+            {daysInMonth.map(opt => {
               const isSelected = selectedDate === opt.dateStr;
               return (
                 <button
                   key={opt.dateStr}
                   onClick={() => onDateChange(opt.dateStr)}
                   style={{
-                    padding: '8px 16px',
+                    padding: '8px 14px',
                     borderRadius: 'var(--radius-sm)',
-                    fontSize: '13px',
-                    fontWeight: isSelected ? '700' : '500',
-                    background: isSelected ? 'var(--primary-accent)' : 'rgba(30, 41, 59, 0.6)',
-                    color: isSelected ? '#0B0F17' : 'var(--text-muted)',
-                    border: isSelected ? 'none' : '1px solid var(--border-color)',
+                    fontSize: '12px',
+                    fontWeight: isSelected ? '800' : '500',
+                    background: isSelected 
+                      ? 'var(--primary-accent)' 
+                      : opt.isToday 
+                        ? 'rgba(16, 185, 129, 0.2)' 
+                        : 'rgba(30, 41, 59, 0.6)',
+                    color: isSelected 
+                      ? '#0B0F17' 
+                      : opt.isToday 
+                        ? '#10B981' 
+                        : 'var(--text-muted)',
+                    border: isSelected 
+                      ? 'none' 
+                      : opt.isToday 
+                        ? '1px solid rgba(16, 185, 129, 0.4)' 
+                        : '1px solid var(--border-color)',
                     whiteSpace: 'nowrap',
-                    boxShadow: isSelected ? '0 0 15px rgba(204, 255, 0, 0.3)' : 'none'
+                    boxShadow: isSelected ? '0 0 15px rgba(204, 255, 0, 0.3)' : 'none',
+                    flexShrink: 0
                   }}
                 >
                   {opt.label}
                 </button>
               );
             })}
-          </div>
-
-          {/* Direct Date Picker */}
-          <div>
-            <input 
-              type="date" 
-              value={selectedDate}
-              onChange={(e) => onDateChange(e.target.value)}
-              style={{
-                background: 'rgba(15, 23, 42, 0.8)',
-                color: '#F8FAFC',
-                border: '1px solid var(--border-color)',
-                padding: '8px 12px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '13px'
-              }}
-            />
           </div>
 
         </div>
