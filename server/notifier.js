@@ -1,13 +1,39 @@
 import axios from 'axios';
+import { exec } from 'child_process';
 
 const SONGGANG_URL = 'https://www.djsiseol.or.kr/res/www/121';
 
 /**
- * KakaoTalk Memo API Notification (Personal KakaoTalk Message)
+ * KakaoTalk Notification Dispatcher
+ * Priority 1: PlayMCP Gateway (mcporter KakaotalkChat-MemoChat)
+ * Priority 2: Direct Kakao API (/v2/api/talk/memo/default/send)
  */
-export async function sendKakaoNotification(kakaoToken, cancellationEvent) {
-  if (!kakaoToken) return;
+export async function sendKakaoNotification(kakaoTokenOrKey, cancellationEvent) {
+  const messageText = `🎾 [송강실내테니스장 취소표 발생!]\n\n` +
+    `📅 날짜: ${cancellationEvent.date}\n` +
+    `🏟️ 코트: ${cancellationEvent.courtName}\n` +
+    `⏰ 시간: ${cancellationEvent.timeLabel}\n` +
+    `상태: ⚡ 방금 취소됨 (예약 가능)\n\n` +
+    `👉 지금 예약하기: ${SONGGANG_URL}`;
 
+  // 1. Try sending via PlayMCP mcporter CLI first
+  exec(`mcporter call mcp-gateway.KakaotalkChat-MemoChat message="${messageText.replace(/"/g, '\\"')}"`, (err, stdout) => {
+    if (!err && stdout.includes('성공')) {
+      console.log(`[Notifier] 💬 PlayMCP KakaoTalk MemoChat sent successfully to your personal chat!`);
+      return;
+    }
+
+    // 2. Fallback to direct Kakao REST API if Bearer token is provided
+    if (kakaoTokenOrKey && !kakaoTokenOrKey.startsWith('mcporter')) {
+      sendDirectKakaoMemo(kakaoTokenOrKey, cancellationEvent);
+    }
+  });
+}
+
+/**
+ * Direct Kakao REST API fallback
+ */
+async function sendDirectKakaoMemo(kakaoToken, cancellationEvent) {
   const templateObject = {
     object_type: 'feed',
     content: {
@@ -34,12 +60,10 @@ export async function sendKakaoNotification(kakaoToken, cancellationEvent) {
     });
 
     if (response.data.result_code === 0) {
-      console.log(`[Notifier] 💬 KakaoTalk message sent successfully to your personal KakaoTalk!`);
-    } else {
-      console.warn(`[Notifier] KakaoTalk response code:`, response.data);
+      console.log(`[Notifier] 💬 Direct KakaoTalk REST API message sent successfully!`);
     }
   } catch (err) {
-    console.error(`[Notifier] KakaoTalk send error:`, err.response ? err.response.data : err.message);
+    console.error(`[Notifier] KakaoTalk REST API error:`, err.response ? err.response.data : err.message);
   }
 }
 
