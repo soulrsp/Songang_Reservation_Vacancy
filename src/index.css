@@ -41,6 +41,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -63,6 +64,7 @@ button {
   border: none;
   outline: none;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  touch-action: manipulation;
 }
 
 input, select {
@@ -145,4 +147,68 @@ input, select {
 /* Typography styles */
 h1, h2, h3, .font-display {
   font-family: var(--font-display);
+}
+
+/* ==========================================================================
+   Mobile Smartphone Responsive Layout Optimizations
+   ========================================================================== */
+@media (max-width: 640px) {
+  body {
+    font-size: 14px;
+  }
+
+  .glass-panel {
+    padding: 14px 16px !important;
+    border-radius: var(--radius-sm) !important;
+  }
+
+  .mobile-header-container {
+    margin: 10px 10px 16px 10px !important;
+    padding: 14px 14px !important;
+  }
+
+  .mobile-main-container {
+    padding: 0 10px 30px 10px !important;
+  }
+
+  .mobile-grid-2col {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .mobile-nav-buttons {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .mobile-nav-buttons button,
+  .mobile-nav-buttons a {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 10px 8px !important;
+    font-size: 12px !important;
+  }
+
+  .mobile-full-btn {
+    grid-column: span 2 !important;
+  }
+
+  .mobile-modal-content {
+    max-height: 90vh !important;
+    padding: 18px 16px !important;
+    margin: 10px !important;
+  }
+
+  .mobile-list-item {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .mobile-list-btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
 }
