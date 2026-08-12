@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { scrapeSonggangTennis } from './crawler.js';
 import { processDiff, getCancellationHistory } from './diffEngine.js';
 import { sendDiscordNotification, sendTelegramNotification, sendKakaoNotification } from './notifier.js';
+import { getTargetCrawlDates, isBookingOpeningMutePeriod } from './schedulerRules.js';
 
 dotenv.config();
 
@@ -17,24 +18,49 @@ app.use(express.json());
 // Handle GitHub Actions One-shot Cron execution (--cron-once flag)
 if (process.argv.includes('--cron-once')) {
   (async () => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    console.log(`[GitHub Actions Cron Agent] Running Songgang Tennis Vacancy Check for ${todayStr}...`);
-    try {
-      const data = await scrapeSonggangTennis(todayStr);
-      if (data && data.slots) {
-        const newEvents = processDiff(data.slots, {
-          kakaoAccessToken: process.env.KAKAO_ACCESS_TOKEN,
-          discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL,
-          telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
-          telegramChatId: process.env.TELEGRAM_CHAT_ID
-        });
-        console.log(`[GitHub Actions Cron Agent] Check complete! ${newEvents.length} cancellation events processed.`);
-      }
-      process.exit(0);
-    } catch (err) {
-      console.error('[GitHub Actions Cron Agent] Execution Notice:', err.message);
-      process.exit(0);
+    const targetDates = getTargetCrawlDates();
+    console.log(`[GitHub Actions Agent] Crawling ${targetDates.length} target dates (Scope: ${targetDates[0]} ~ ${targetDates[targetDates.length - 1]})...`);
+    
+    // Always trigger a GitHub Actions KakaoTalk verification test message if token is configured
+    if (process.env.KAKAO_ACCESS_TOKEN) {
+      console.log('[GitHub Actions Agent] 💬 Sending KakaoTalk Integration Test Message to verified user...');
+      const testEvent = {
+        id: 'test-gh-' + Date.now(),
+        courtName: '1번 코트 (실내)',
+        date: new Date().toLocaleDateString('ko-KR'),
+        timeLabel: '18:00 - 20:00 (GitHub Actions 연동 검증)',
+        timestamp: new Date().toLocaleTimeString('ko-KR')
+      };
+      await sendKakaoNotification(process.env.KAKAO_ACCESS_TOKEN, testEvent);
+    } else {
+      console.warn('[GitHub Actions Agent] ⚠️ KAKAO_ACCESS_TOKEN is not set in GitHub Secrets!');
     }
+
+    if (isBookingOpeningMutePeriod()) {
+      console.log('[GitHub Actions Agent] 🔇 Mute Window Active (25th 09:00~10:00 KST). Notifications muted.');
+    }
+
+    let totalEvents = 0;
+
+    for (const dateStr of targetDates) {
+      try {
+        const data = await scrapeSonggangTennis(dateStr);
+        if (data && data.slots) {
+          const events = processDiff(data.slots, {
+            kakaoAccessToken: process.env.KAKAO_ACCESS_TOKEN,
+            discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL,
+            telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
+            telegramChatId: process.env.TELEGRAM_CHAT_ID
+          });
+          totalEvents += events.length;
+        }
+      } catch (err) {
+        console.error(`[GitHub Actions Agent] Date ${dateStr} notice:`, err.message);
+      }
+    }
+
+    console.log(`[GitHub Actions Agent] Finished crawling ${targetDates.length} dates! ${totalEvents} cancellation events processed.`);
+    process.exit(0);
   })();
 } else {
   // Standalone Web Server Mode
@@ -72,18 +98,21 @@ if (process.argv.includes('--cron-once')) {
     res.json({ success: true, message: '디스코드 테스트 알림 발송 완료!' });
   });
 
-  cron.schedule('*/1 * * * *', async () => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    try {
-      const data = await scrapeSonggangTennis(todayStr);
-      if (data && data.slots) {
-        processDiff(data.slots, {
-          kakaoAccessToken: process.env.KAKAO_ACCESS_TOKEN,
-          discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL
-        });
+  // Background Cron Job (Scrapes target dates according to 25th 10am rule)
+  cron.schedule('*/3 * * * *', async () => {
+    const targetDates = getTargetCrawlDates();
+    for (const dateStr of targetDates) {
+      try {
+        const data = await scrapeSonggangTennis(dateStr);
+        if (data && data.slots) {
+          processDiff(data.slots, {
+            kakaoAccessToken: process.env.KAKAO_ACCESS_TOKEN,
+            discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL
+          });
+        }
+      } catch (err) {
+        console.error(`[Agent Cron Error] ${dateStr}:`, err.message);
       }
-    } catch (err) {
-      console.error('[Agent Cron Error]:', err.message);
     }
   });
 
