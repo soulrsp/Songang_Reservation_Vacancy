@@ -34,8 +34,8 @@ export default function App() {
     webPushEnabled: false,
     soundEnabled: true,
     discordWebhookUrl: '',
-    kakaoAccessToken: '',
-    kakaoRecipientType: 'memo',
+    telegramBotToken: '',
+    telegramChatId: '',
     pollInterval: 60
   });
 
@@ -128,7 +128,6 @@ export default function App() {
         lastRefreshed={lastRefreshed}
         onRefresh={loadData}
         onOpenSettings={() => setIsSettingsOpen(true)}
-        onSimulateCancellation={handleSimulateCancellation}
         isRefreshing={isRefreshing}
       />
 
