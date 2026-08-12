@@ -19,8 +19,39 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install Dependencies
-        run: npm ci
+      - name: Install Dependencies & Setup mcporter
+        run: |
+          npm ci
+          npm install -g mcporter
+          mcporter config add mcp-gateway https://playmcp.kakao.com/mcp --auth oauth --scope home
+          mkdir -p ~/.mcporter
+          node -e '
+            const fs = require("fs");
+            const os = require("os");
+            const hash = "92ef5a9fd655a681";
+            const token = (process.env.KAKAO_ACCESS_TOKEN || "").trim();
+            if (token) {
+              const creds = {
+                version: 1,
+                entries: {
+                  ["mcp-gateway|" + hash]: {
+                    serverName: "mcp-gateway",
+                    serverUrl: "https://playmcp.kakao.com/mcp",
+                    tokens: {
+                      access_token: token,
+                      token_type: "Bearer"
+                    },
+                    clientInfo: { client_id: "HElMUWdVoroTsrXxezeTSemg8gXzzCKWARb5MJux8gY" },
+                    updatedAt: new Date().toISOString()
+                  }
+                }
+              };
+              fs.writeFileSync(os.homedir() + "/.mcporter/credentials.json", JSON.stringify(creds, null, 2));
+              console.log("[GitHub Setup] mcporter PlayMCP gateway credentials initialized successfully!");
+            }
+          '
+        env:
+          KAKAO_ACCESS_TOKEN: ${{ secrets.KAKAO_ACCESS_TOKEN }}
 
       - name: Run Songgang Tennis 3-Min Vacancy Monitor Agent
         env:
