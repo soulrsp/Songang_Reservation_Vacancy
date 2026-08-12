@@ -1,0 +1,29 @@
+name: 🎾 송강실내테니스장 3분 간격 실시간 취소표 알리미 (GitHub Actions Cron)
+
+on:
+  schedule:
+    # Public 레포지토리 전용: 100% 무제한 무료 실행
+    # 한국 시간(KST) 06:00 ~ 24:00 동안 3분 간격 자동 감지 (UTC 기준 21:00~14:59)
+    - cron: '*/3 21-23,0-14 * * *'
+  workflow_dispatch:
+
+jobs:
+  check-tennis-vacancy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Songgang Tennis 3-Min Vacancy Monitor Agent
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          KAKAO_ACCESS_TOKEN: ${{ secrets.KAKAO_ACCESS_TOKEN }}
+        run: node server/index.js --cron-once
