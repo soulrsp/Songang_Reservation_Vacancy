@@ -53,15 +53,38 @@ export function processDiff(currentSlots, options = {}) {
     console.log('[Notification Engine] 🔇 매달 25일 09시~10시 다음달 오픈시간: 알림 발송 일시 정지 (Mute Window Active)');
   }
 
+  console.log(`[Diff Engine] 📊 비교 시작 - 총 ${currentSlots.length}개 슬롯 / 이전 상태 ${previousState.size}개 기록`);
+
+  let availableCount = 0;
+  let changedToAvailable = 0;
+  let alreadyAvailable = 0;
+
   for (const slot of currentSlots) {
     const key = slot.id;
     const prevStatus = previousState.get(key);
     const isAvailableNow = slot.status === 'available' || slot.status === 'cancelled';
 
+    if (isAvailableNow) availableCount++;
+
     // TRIGGER NOTIFICATION IF:
-    // 1. Slot was previously 'reserved' and is now 'available' (Real-time cancellation!)
-    // 2. Slot status changed from not-available (or undefined/first scan) to available
-    const isStateChangedToAvailable = (prevStatus === 'reserved' || prevStatus === undefined) && isAvailableNow;
+    // 1. Slot is currently available/cancelled
+    // AND
+    // 2. Previous status was 'reserved' (genuine cancellation) OR
+    //    Previous status is undefined (first time we see this slot)
+    //    But NOT if previous status was already 'available' (no state change)
+    const wasReservedOrNew = prevStatus === 'reserved' || prevStatus === undefined;
+    const isStateChangedToAvailable = isAvailableNow && wasReservedOrNew;
+
+    if (isAvailableNow) {
+      if (wasReservedOrNew) {
+        changedToAvailable++;
+        const reasonLabel = prevStatus === undefined ? '최초감지' : '취소표발생';
+        console.log(`[Diff Engine] 🎾 [${reasonLabel}] ${slot.courtName} ${slot.date} ${slot.timeLabel} (prev: ${prevStatus ?? 'NONE'} → now: ${slot.status})`);
+      } else {
+        alreadyAvailable++;
+        // Already available from previous run — no notification needed
+      }
+    }
 
     if (isStateChangedToAvailable) {
       const event = {
@@ -72,12 +95,11 @@ export function processDiff(currentSlots, options = {}) {
         timeLabel: slot.timeLabel,
         date: slot.date,
         timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        type: '취소표 발생'
+        type: prevStatus === undefined ? '빈자리 감지' : '취소표 발생'
       };
 
       newCancellations.push(event);
       cancellationHistory.unshift(event);
-      console.log(`[Diff Engine] 🎾 취소표/빈자리 감지! ${event.courtName} ${event.date} ${event.timeLabel}`);
 
       // Dispatch multi-channel notifications (ONLY if not muted during 25th 09:00~10:00 KST)
       if (!isMuted) {
@@ -93,9 +115,11 @@ export function processDiff(currentSlots, options = {}) {
       }
     }
 
-    // Update state cache
+    // Update state cache (always update to latest status)
     previousState.set(key, slot.status);
   }
+
+  console.log(`[Diff Engine] ✅ 비교 완료 - 예약가능: ${availableCount}개 / 신규감지: ${changedToAvailable}개 (이미알고있던 빈자리: ${alreadyAvailable}개)`);
 
   // Persist updated state to file
   saveState(previousState);
