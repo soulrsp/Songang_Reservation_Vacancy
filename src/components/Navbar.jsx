@@ -43,28 +43,22 @@ export default function Navbar({
             }}>
               PlayMCP Live
             </span>
+            <span style={{
+              fontSize: '12px',
+              color: '#10B981',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: 'rgba(16, 185, 129, 0.12)',
+              padding: '2px 8px',
+              borderRadius: '12px',
+              border: '1px solid rgba(16, 185, 129, 0.3)'
+            }}>
+              <span className="live-indicator"></span>
+              {lastRefreshed ? lastRefreshed.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '초기화'}
+            </span>
           </div>
-        </div>
-
-        {/* Live Agent Status Badge */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '8px',
-          padding: '6px 14px',
-          borderRadius: 'var(--radius-full)',
-          background: 'rgba(16, 185, 129, 0.12)',
-          border: '1px solid rgba(16, 185, 129, 0.3)',
-          fontSize: '12px',
-          color: '#10B981',
-          fontWeight: '600'
-        }}>
-          <span className="live-indicator"></span>
-          <span>송강 테니스 감지 중</span>
-          <span style={{ fontSize: '11px', opacity: 0.8 }}>
-            ({lastRefreshed ? lastRefreshed.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '초기화'})
-          </span>
         </div>
 
         {/* Action Buttons — always one horizontal row */}
