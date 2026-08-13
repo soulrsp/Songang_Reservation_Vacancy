@@ -1,6 +1,5 @@
 // Frontend API Client tailored for Daejeon Songgang Indoor Tennis Court
 const SONGGANG_LIVE_URL = 'https://www.djsiseol.or.kr/res/www/121';
-const API_BASE = 'https://www.djsiseol.or.kr/res/rest/facilities';
 const CENTER_CODE = 'DJSISEOL11';
 const PART_CODE = '01';
 const RENT_TYPE = '1001';
@@ -50,61 +49,72 @@ function getTargetCrawlDates() {
 }
 
 /**
- * Direct Client-Side Scraper:
- * Scrapes target dates directly from Daejeon Facility Management REST API from browser.
- * Works 100% even without backend Node server running!
+ * Direct Client-Side Scraper using Vite Proxy or Public CORS Proxy
  */
 export async function fetchDirectSonggangSchedule() {
   const targetDates = getTargetCrawlDates();
   const allSlots = [];
   const courts = COURTS.map(c => ({ id: `songgang-${c.id}`, name: c.name, surface: '실내 하드' }));
 
-  await Promise.all(targetDates.map(async (dateStr) => {
+  // Primary Endpoint: Vite Proxy /djsiseol-api
+  // Secondary Endpoint: Public CORS Proxy for static gh-pages deployment
+  const tryFetchCourtDate = async (dateStr, court) => {
     const baseDateParam = dateStr.replace(/-/g, '');
-    await Promise.all(COURTS.map(async (court) => {
+    const bodyParams = new URLSearchParams({
+      company_code: CENTER_CODE,
+      group_cd: '',
+      part_code: PART_CODE,
+      place_code: court.placeCode,
+      base_date: baseDateParam,
+      rent_type: RENT_TYPE,
+      mem_no: ''
+    });
+
+    const endpoints = [
+      '/djsiseol-api/res/rest/facilities/place_time_state_list',
+      `https://corsproxy.io/?${encodeURIComponent('https://www.djsiseol.or.kr/res/rest/facilities/place_time_state_list')}`
+    ];
+
+    for (const ep of endpoints) {
       try {
-        const body = new URLSearchParams({
-          company_code: CENTER_CODE,
-          group_cd: '',
-          part_code: PART_CODE,
-          place_code: court.placeCode,
-          base_date: baseDateParam,
-          rent_type: RENT_TYPE,
-          mem_no: ''
-        });
-
-        const res = await fetch(`${API_BASE}/place_time_state_list`, {
+        const res = await fetch(ep, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-          },
-          body: body.toString()
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: bodyParams.toString()
         });
-
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!Array.isArray(data)) return;
-
-        for (const slot of data) {
-          const timeLabel = `${slot.start_time}~${slot.end_time}`;
-          const startHour = slot.start_time.replace(':', '');
-          const slotId = `${dateStr}_songgang-${court.id}_${startHour}`;
-          // 'N' means AVAILABLE (not reserved)
-          const status = slot.use_yn === 'N' ? 'available' : 'reserved';
-
-          allSlots.push({
-            id: slotId,
-            courtId: `songgang-${court.id}`,
-            courtName: court.name,
-            timeLabel,
-            date: dateStr,
-            status,
-            use_yn: slot.use_yn,
-            timeNo: slot.time_no
-          });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) return data;
         }
       } catch (e) {
-        // Silent catch for individual court fetch failure
+        // Try next endpoint
+      }
+    }
+    return null;
+  };
+
+  await Promise.all(targetDates.map(async (dateStr) => {
+    await Promise.all(COURTS.map(async (court) => {
+      const data = await tryFetchCourtDate(dateStr, court);
+      if (!data) return;
+
+      for (const slot of data) {
+        const timeLabel = `${slot.start_time}~${slot.end_time}`;
+        const startHour = slot.start_time.replace(':', '');
+        const slotId = `${dateStr}_songgang-${court.id}_${startHour}`;
+        // 'N' means AVAILABLE
+        const status = slot.use_yn === 'N' ? 'available' : 'reserved';
+
+        allSlots.push({
+          id: slotId,
+          courtId: `songgang-${court.id}`,
+          courtName: court.name,
+          timeLabel,
+          date: dateStr,
+          status,
+          use_yn: slot.use_yn,
+          timeNo: slot.time_no
+        });
       }
     }));
   }));
@@ -122,12 +132,10 @@ export async function fetchDirectSonggangSchedule() {
 }
 
 /**
- * Main Fetcher:
- * 1. Try Backend Agent Server Endpoint (/api/schedule or http://localhost:3001/api/schedule)
- * 2. Fallback to Direct Client-Side Scraping (fetchDirectSonggangSchedule)
+ * Main Schedule Fetcher for Dashboard
  */
 export async function fetchCourtSchedule(dateStr = 'all') {
-  // Strategy 1: Relative API Endpoint
+  // Strategy 1: Relative Local Backend Proxy (/api/schedule)
   try {
     const res = await fetch(`/api/schedule?date=${dateStr}`);
     if (res.ok) {
@@ -136,11 +144,9 @@ export async function fetchCourtSchedule(dateStr = 'all') {
         return data;
       }
     }
-  } catch (err) {
-    // Relative fetch failed
-  }
+  } catch (err) { /* silent */ }
 
-  // Strategy 2: Absolute Port 3001 Endpoint
+  // Strategy 2: Absolute Port 3001 Server (http://localhost:3001/api/schedule)
   try {
     const res = await fetch(`http://localhost:3001/api/schedule?date=${dateStr}`);
     if (res.ok) {
@@ -149,33 +155,22 @@ export async function fetchCourtSchedule(dateStr = 'all') {
         return data;
       }
     }
-  } catch (err) {
-    // Absolute fetch failed
-  }
+  } catch (err) { /* silent */ }
 
-  // Strategy 3: Direct Client-Side Scraping against Daejeon REST API
-  console.log('[Frontend API] 🌐 Backend server unavailable. Performing direct client-side scan of Daejeon REST API...');
+  // Strategy 3: Client-side Proxy Scraper
   return await fetchDirectSonggangSchedule();
 }
 
 export async function fetchCancellationLogs() {
   try {
     const res = await fetch('/api/cancellations');
-    if (res.ok) {
-      return await res.json();
-    }
-  } catch (err) {
-    // Relative fetch failed
-  }
+    if (res.ok) return await res.json();
+  } catch (err) { /* silent */ }
 
   try {
     const res = await fetch('http://localhost:3001/api/cancellations');
-    if (res.ok) {
-      return await res.json();
-    }
-  } catch (err) {
-    // Absolute fetch failed
-  }
+    if (res.ok) return await res.json();
+  } catch (err) { /* silent */ }
 
   return [];
 }
@@ -190,18 +185,12 @@ export async function testKakaoNotification(tokenOrKey, recipientType = 'memo') 
           title: '🎾 [송강실내테니스장] 취소표 알림 테스트',
           description: 'PlayMCP 카카오톡 알림 에이전트 연동이 정상 완료되었습니다!',
           image_url: 'https://www.djsiseol.or.kr/res/design/homepage/fmcs/images/logo.png',
-          link: {
-            web_url: SONGGANG_LIVE_URL,
-            mobile_web_url: SONGGANG_LIVE_URL
-          }
+          link: { web_url: SONGGANG_LIVE_URL, mobile_web_url: SONGGANG_LIVE_URL }
         },
         buttons: [
           {
             title: '송강실내테니스장 예약 바로가기',
-            link: {
-              web_url: SONGGANG_LIVE_URL,
-              mobile_web_url: SONGGANG_LIVE_URL
-            }
+            link: { web_url: SONGGANG_LIVE_URL, mobile_web_url: SONGGANG_LIVE_URL }
           }
         ]
       }
@@ -224,10 +213,7 @@ export async function testKakaoNotification(tokenOrKey, recipientType = 'memo') 
       }
     }
 
-    return { 
-      success: true, 
-      message: '카카오톡 알림 테스트 설정 완료! (취소표 발생 시 실시간 발송)' 
-    };
+    return { success: true, message: '카카오톡 알림 테스트 설정 완료! (취소표 발생 시 실시간 발송)' };
   } catch (err) {
     return { success: false, message: '카카오톡 발송 실패: ' + err.message };
   }
