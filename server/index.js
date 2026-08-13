@@ -84,26 +84,32 @@ if (process.argv.includes('--cron-once')) {
       console.log('[GitHub Actions Agent] 🔇 Mute Window Active (25th 09:00~10:00 KST). Notifications muted.');
     }
 
-    let totalEvents = 0;
-
+    // Collect ALL slots from ALL dates first, then run diff ONCE
+    // (Running processDiff per-date would corrupt previousState mid-loop due to saveState calls)
+    const allSlots = [];
     for (const dateStr of targetDates) {
       try {
         const data = await scrapeSonggangTennis(dateStr);
         if (data && data.slots) {
-          const events = processDiff(data.slots, {
-            kakaoAccessToken: process.env.KAKAO_ACCESS_TOKEN,
-            discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL,
-            telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
-            telegramChatId: process.env.TELEGRAM_CHAT_ID
-          });
-          totalEvents += events.length;
+          allSlots.push(...data.slots);
         }
       } catch (err) {
-        console.error(`[GitHub Actions Agent] Date ${dateStr} notice:`, err.message);
+        console.error(`[GitHub Actions Agent] Date ${dateStr} crawl error:`, err.message);
       }
     }
 
-    console.log(`[GitHub Actions Agent] Finished crawling ${targetDates.length} dates! ${totalEvents} cancellation events processed.`);
+    console.log(`[GitHub Actions Agent] 수집 완료: ${targetDates.length}개 날짜 / 총 ${allSlots.length}개 슬롯`);
+
+    // Single unified diff comparison against full snapshot
+    const events = processDiff(allSlots, {
+      kakaoAccessToken: process.env.KAKAO_ACCESS_TOKEN,
+      discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL,
+      telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
+      telegramChatId: process.env.TELEGRAM_CHAT_ID
+    });
+    const totalEvents = events.length;
+
+    console.log(`[GitHub Actions Agent] Finished! ${totalEvents} cancellation events processed.`);
     process.exit(0);
   })();
 } else {
