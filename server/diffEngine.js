@@ -43,8 +43,7 @@ function isBookingOpeningMutePeriod() {
 }
 
 /**
- * Compare current snapshot against previous snapshot to identify newly freed slots.
- * previousState is persisted between GitHub Actions runs via STATE_FILE.
+ * Compare current snapshot against previous snapshot to identify newly freed or open slots.
  */
 export function processDiff(currentSlots, options = {}) {
   const newCancellations = [];
@@ -57,9 +56,14 @@ export function processDiff(currentSlots, options = {}) {
   for (const slot of currentSlots) {
     const key = slot.id;
     const prevStatus = previousState.get(key);
+    const isAvailableNow = slot.status === 'available' || slot.status === 'cancelled';
 
-    // If slot was previously 'reserved' and is now 'available' or 'cancelled' → cancellation!
-    if (prevStatus === 'reserved' && (slot.status === 'available' || slot.status === 'cancelled')) {
+    // TRIGGER NOTIFICATION IF:
+    // 1. Slot was previously 'reserved' and is now 'available' (Real-time cancellation!)
+    // 2. Slot status changed from not-available (or undefined/first scan) to available
+    const isStateChangedToAvailable = (prevStatus === 'reserved' || prevStatus === undefined) && isAvailableNow;
+
+    if (isStateChangedToAvailable) {
       const event = {
         id: 'event-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
         slotId: slot.id,
@@ -73,7 +77,7 @@ export function processDiff(currentSlots, options = {}) {
 
       newCancellations.push(event);
       cancellationHistory.unshift(event);
-      console.log(`[Diff Engine] 🎾 취소표 감지! ${event.courtName} ${event.date} ${event.timeLabel}`);
+      console.log(`[Diff Engine] 🎾 취소표/빈자리 감지! ${event.courtName} ${event.date} ${event.timeLabel}`);
 
       // Dispatch multi-channel notifications (ONLY if not muted during 25th 09:00~10:00 KST)
       if (!isMuted) {
