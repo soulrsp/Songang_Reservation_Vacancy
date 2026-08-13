@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import cron from 'node-cron';
 import dotenv from 'dotenv';
-import { scrapeSonggangTennis } from './crawler.js';
+import { scrapeSonggangTennis, scrapeMultipleDates } from './crawler.js';
 import { processDiff, getCancellationHistory } from './diffEngine.js';
 import { sendDiscordNotification, sendTelegramNotification, sendKakaoNotification } from './notifier.js';
 
@@ -109,16 +109,16 @@ if (process.argv.includes('--cron-once')) {
 } else {
   // Standalone Web Server Mode
   app.get('/api/schedule', async (req, res) => {
-    const dateStr = req.query.date || new Date().toISOString().split('T')[0];
     try {
-      const data = await scrapeSonggangTennis(dateStr);
+      const targetDates = getTargetCrawlDates();
+      const data = await scrapeMultipleDates(targetDates);
       if (data && data.slots) {
         processDiff(data.slots, {
           kakaoAccessToken: process.env.KAKAO_ACCESS_TOKEN,
           discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL
         });
       }
-      res.json(data);
+      res.json({ ...data, targetDatesScope: `${targetDates[0]} ~ ${targetDates[targetDates.length - 1]}` });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
