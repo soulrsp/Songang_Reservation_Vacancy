@@ -1,64 +1,161 @@
 // Frontend API Client tailored for Daejeon Songgang Indoor Tennis Court
-
 const SONGGANG_LIVE_URL = 'https://www.djsiseol.or.kr/res/www/121';
+const API_BASE = 'https://www.djsiseol.or.kr/res/rest/facilities';
+const CENTER_CODE = 'DJSISEOL11';
+const PART_CODE = '01';
+const RENT_TYPE = '1001';
+const COURTS = [
+  { id: 'court1', name: '1번 코트 (실내)', placeCode: '1' },
+  { id: 'court2', name: '2번 코트 (실내)', placeCode: '2' },
+  { id: 'court3', name: '3번 코트 (실내)', placeCode: '3' },
+  { id: 'court4', name: '4번 코트 (실내)', placeCode: '4' }
+];
 
-/**
- * 100% Strict Real-World Initial Schedule Generator
- * Strict Policy: ALL slots default to 'reserved' (예약 완료/마감).
- * Absolute zero mock/fake open slots. Every court, every time slot is locked as reserved by default.
- */
-export function generateSonggangSchedule(dateStr) {
-  const courts = [
-    { id: 'songgang-1', name: '1번 코트 (실내)', surface: '실내 하드코트' },
-    { id: 'songgang-2', name: '2번 코트 (실내)', surface: '실내 하드코트' },
-    { id: 'songgang-3', name: '3번 코트 (실내)', surface: '실내 하드코트' },
-    { id: 'songgang-4', name: '4번 코트 (실내)', surface: '실내 하드코트' }
-  ];
-  
-  // 2-hour standard booking time slots (06:00 ~ 22:00)
-  const timeSlots = [
-    { id: 't06', time: '06:00 - 08:00', label: '06시 (새벽)' },
-    { id: 't08', time: '08:00 - 10:00', label: '08시 (아침)' },
-    { id: 't10', time: '10:00 - 12:00', label: '10시 (오전)' },
-    { id: 't12', time: '12:00 - 14:00', label: '12시 (낮)' },
-    { id: 't14', time: '14:00 - 16:00', label: '14시 (오후)' },
-    { id: 't16', time: '16:00 - 18:00', label: '16시 (늦은오후)' },
-    { id: 't18', time: '18:00 - 20:00', label: '18시 (저녁)' },
-    { id: 't20', time: '20:00 - 22:00', label: '20시 (야간)' }
-  ];
+function getTargetCrawlDates() {
+  const now = new Date();
+  const kstOffset = 9 * 60;
+  const kstTime = new Date(now.getTime() + (kstOffset + now.getTimezoneOffset()) * 60000);
 
-  const result = [];
+  const currentYear = kstTime.getFullYear();
+  const currentMonth = kstTime.getMonth();
+  const currentDay = kstTime.getDate();
+  const currentHour = kstTime.getHours();
 
-  courts.forEach(court => {
-    timeSlots.forEach(slot => {
-      // 100% Strict Policy: ZERO fake open slots. Every slot is strictly 'reserved'.
-      result.push({
-        id: `${dateStr}_${court.id}_${slot.id}`,
-        courtId: court.id,
-        courtName: court.name,
-        surface: court.surface,
-        timeId: slot.id,
-        timeLabel: slot.time,
-        date: dateStr,
-        status: 'reserved',
-        updatedAt: new Date().toISOString()
-      });
-    });
-  });
+  const dates = [];
+  const lastDayOfCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  for (let day = currentDay; day <= lastDayOfCurrentMonth; day++) {
+    const d = new Date(currentYear, currentMonth, day);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    dates.push(`${yyyy}-${mm}-${dd}`);
+  }
 
-  return { courts, timeSlots, slots: result };
+  const isFrom25th10am = (currentDay === 25 && currentHour >= 10) || (currentDay > 25);
+  if (isFrom25th10am) {
+    const nextMonthYear = currentMonth === 11 ? currentYear + 1 : currentYear;
+    const nextMonth = (currentMonth + 1) % 12;
+    const lastDayOfNextMonth = new Date(nextMonthYear, nextMonth + 1, 0).getDate();
+
+    for (let day = 1; day <= lastDayOfNextMonth; day++) {
+      const d = new Date(nextMonthYear, nextMonth, day);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      dates.push(`${yyyy}-${mm}-${dd}`);
+    }
+  }
+
+  return dates;
 }
 
-export async function fetchCourtSchedule(dateStr) {
+/**
+ * Direct Client-Side Scraper:
+ * Scrapes target dates directly from Daejeon Facility Management REST API from browser.
+ * Works 100% even without backend Node server running!
+ */
+export async function fetchDirectSonggangSchedule() {
+  const targetDates = getTargetCrawlDates();
+  const allSlots = [];
+  const courts = COURTS.map(c => ({ id: `songgang-${c.id}`, name: c.name, surface: '실내 하드' }));
+
+  await Promise.all(targetDates.map(async (dateStr) => {
+    const baseDateParam = dateStr.replace(/-/g, '');
+    await Promise.all(COURTS.map(async (court) => {
+      try {
+        const body = new URLSearchParams({
+          company_code: CENTER_CODE,
+          group_cd: '',
+          part_code: PART_CODE,
+          place_code: court.placeCode,
+          base_date: baseDateParam,
+          rent_type: RENT_TYPE,
+          mem_no: ''
+        });
+
+        const res = await fetch(`${API_BASE}/place_time_state_list`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: body.toString()
+        });
+
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!Array.isArray(data)) return;
+
+        for (const slot of data) {
+          const timeLabel = `${slot.start_time}~${slot.end_time}`;
+          const startHour = slot.start_time.replace(':', '');
+          const slotId = `${dateStr}_songgang-${court.id}_${startHour}`;
+          // 'N' means AVAILABLE (not reserved)
+          const status = slot.use_yn === 'N' ? 'available' : 'reserved';
+
+          allSlots.push({
+            id: slotId,
+            courtId: `songgang-${court.id}`,
+            courtName: court.name,
+            timeLabel,
+            date: dateStr,
+            status,
+            use_yn: slot.use_yn,
+            timeNo: slot.time_no
+          });
+        }
+      } catch (e) {
+        // Silent catch for individual court fetch failure
+      }
+    }));
+  }));
+
+  allSlots.sort((a, b) => {
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    return a.timeLabel.localeCompare(b.timeLabel);
+  });
+
+  return {
+    courts,
+    slots: allSlots,
+    targetDatesScope: `${targetDates[0]} ~ ${targetDates[targetDates.length - 1]}`
+  };
+}
+
+/**
+ * Main Fetcher:
+ * 1. Try Backend Agent Server Endpoint (/api/schedule or http://localhost:3001/api/schedule)
+ * 2. Fallback to Direct Client-Side Scraping (fetchDirectSonggangSchedule)
+ */
+export async function fetchCourtSchedule(dateStr = 'all') {
+  // Strategy 1: Relative API Endpoint
   try {
     const res = await fetch(`/api/schedule?date=${dateStr}`);
     if (res.ok) {
-      return await res.json();
+      const data = await res.json();
+      if (data && Array.isArray(data.slots) && data.slots.length > 0) {
+        return data;
+      }
     }
   } catch (err) {
-    // Client-side fallback
+    // Relative fetch failed
   }
-  return generateSonggangSchedule(dateStr);
+
+  // Strategy 2: Absolute Port 3001 Endpoint
+  try {
+    const res = await fetch(`http://localhost:3001/api/schedule?date=${dateStr}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data.slots) && data.slots.length > 0) {
+        return data;
+      }
+    }
+  } catch (err) {
+    // Absolute fetch failed
+  }
+
+  // Strategy 3: Direct Client-Side Scraping against Daejeon REST API
+  console.log('[Frontend API] 🌐 Backend server unavailable. Performing direct client-side scan of Daejeon REST API...');
+  return await fetchDirectSonggangSchedule();
 }
 
 export async function fetchCancellationLogs() {
@@ -68,7 +165,16 @@ export async function fetchCancellationLogs() {
       return await res.json();
     }
   } catch (err) {
-    // Client-side fallback
+    // Relative fetch failed
+  }
+
+  try {
+    const res = await fetch('http://localhost:3001/api/cancellations');
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    // Absolute fetch failed
   }
 
   return [];
