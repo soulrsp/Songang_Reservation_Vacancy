@@ -1,7 +1,6 @@
 import axios from 'axios';
 import https from 'https';
 
-// Reuse HTTPS agent (ignore self-signed cert - site uses EV cert that's fine in GH Actions)
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
 const API_BASE = 'https://www.djsiseol.or.kr/res/rest/facilities';
@@ -24,26 +23,18 @@ const HEADERS = {
   'X-Requested-With': 'XMLHttpRequest'
 };
 
-/**
- * use_yn field meanings:
- *   "N" → 예약가능 (Available / CANCELLATION DETECTED)
- *   "Y" → 예약완료 (Reserved - someone booked it)
- *   "E" → 마감 (Expired past time, or monthly-pass blocked slot)
- */
 function parseStatus(use_yn) {
   if (use_yn === 'N') return 'available';
-  return 'reserved'; // Y or E → reserved
+  return 'reserved';
 }
 
 /**
  * Scrape Songgang Indoor Tennis Court schedule via direct REST API.
- * No browser required — pure HTTP POST with JSON response.
- *
+ * 
  * @param {string} dateStr - format: YYYY-MM-DD
  * @returns {{ courts, slots }}
  */
 export async function scrapeSonggangTennis(dateStr) {
-  // API expects YYYYMMDD format
   const baseDateParam = dateStr.replace(/-/g, '');
 
   const courts = COURTS.map(c => ({
@@ -54,7 +45,6 @@ export async function scrapeSonggangTennis(dateStr) {
 
   const slots = [];
 
-  // Fetch all 4 courts in parallel
   await Promise.all(COURTS.map(async (court) => {
     try {
       const response = await axios.post(
@@ -73,13 +63,11 @@ export async function scrapeSonggangTennis(dateStr) {
 
       const data = response.data;
       if (!Array.isArray(data)) {
-        console.warn(`[Crawler] ${dateStr} ${court.name}: unexpected response format`);
         return;
       }
 
       for (const slot of data) {
         const timeLabel = `${slot.start_time}~${slot.end_time}`;
-        // Stable ID: date_courtId_startHour (e.g. 2026-08-13_court1_0600)
         const startHour = slot.start_time.replace(':', '');
         const slotId = `${dateStr}_songgang-${court.id}_${startHour}`;
 
@@ -94,15 +82,7 @@ export async function scrapeSonggangTennis(dateStr) {
           timeNo: slot.time_no
         });
       }
-
-      const available = slots.filter(s => s.courtId === `songgang-${court.id}` && s.date === dateStr && s.status === 'available');
-      if (available.length > 0) {
-        console.log(`[Crawler] 🎾 ${dateStr} ${court.name}: ${available.length} available slots! → ${available.map(s => s.timeLabel).join(', ')}`);
-      }
-
     } catch (err) {
-      console.warn(`[Crawler] ${dateStr} ${court.name} error: ${err.message}`);
-      // On error, push reserved baseline for this court so we don't lose diff state
       _pushReservedBaseline(dateStr, court, slots);
     }
   }));
@@ -111,9 +91,33 @@ export async function scrapeSonggangTennis(dateStr) {
     return { courts, slots };
   }
 
-  // Full fallback if ALL courts failed
-  console.warn(`[Crawler] ${dateStr}: all courts failed, using reserved baseline`);
   return generateReservedBaseline(dateStr);
+}
+
+/**
+ * Scrape multiple target dates and aggregate all slots & available slots.
+ */
+export async function scrapeMultipleDates(dateStrList) {
+  const allSlots = [];
+  let courts = [];
+
+  await Promise.all(dateStrList.map(async (d) => {
+    const res = await scrapeSonggangTennis(d);
+    if (res && res.slots) {
+      allSlots.push(...res.slots);
+    }
+    if (res && res.courts && courts.length === 0) {
+      courts = res.courts;
+    }
+  }));
+
+  // Sort slots chronologically by date and time
+  allSlots.sort((a, b) => {
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    return a.timeLabel.localeCompare(b.timeLabel);
+  });
+
+  return { courts, slots: allSlots };
 }
 
 function _pushReservedBaseline(dateStr, court, slotsArray) {
