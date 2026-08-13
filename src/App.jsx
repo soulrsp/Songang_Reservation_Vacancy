@@ -3,9 +3,8 @@ import Navbar from './components/Navbar';
 import CourtSchedule from './components/CourtSchedule';
 import NotificationSettingsModal from './components/NotificationSettingsModal';
 
-import { fetchCourtSchedule, fetchCancellationLogs } from './services/api';
-import { playNotificationSound } from './services/sound';
-import { Sparkles, ExternalLink, X, Zap } from 'lucide-react';
+import { fetchCourtSchedule } from './services/api';
+import { Sparkles, ExternalLink } from 'lucide-react';
 
 export default function App() {
   const getTodayStr = () => {
@@ -17,12 +16,8 @@ export default function App() {
   };
 
   const [scheduleData, setScheduleData] = useState({ courts: [], slots: [], targetDatesScope: '' });
-  const [cancellationLogs, setCancellationLogs] = useState([]);
   const [lastRefreshed, setLastRefreshed] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // Active Notification Toast
-  const [activeToast, setActiveToast] = useState(null);
 
   // Booking Modal State
   const [bookingModalSlot, setBookingModalSlot] = useState(null);
@@ -30,8 +25,6 @@ export default function App() {
   // Settings Modal State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settings, setSettings] = useState({
-    webPushEnabled: false,
-    soundEnabled: true,
     discordWebhookUrl: '',
     telegramBotToken: '',
     telegramChatId: '',
@@ -42,10 +35,6 @@ export default function App() {
     setIsRefreshing(true);
     const data = await fetchCourtSchedule('all');
     setScheduleData(data);
-    
-    const logs = await fetchCancellationLogs();
-    setCancellationLogs(logs);
-
     setLastRefreshed(new Date());
     setIsRefreshing(false);
   }, []);
@@ -63,56 +52,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [settings.pollInterval, loadData]);
 
-  // Trigger Cancellation Simulation
-  const handleSimulateCancellation = () => {
-    if (!scheduleData.slots || scheduleData.slots.length === 0) return;
 
-    const reservedSlots = scheduleData.slots.filter(s => s.status === 'reserved');
-    const targetSlot = reservedSlots.length > 0
-      ? reservedSlots[Math.floor(Math.random() * reservedSlots.length)]
-      : scheduleData.slots[0];
-
-    const updatedSlots = scheduleData.slots.map(s => {
-      if (s.id === targetSlot.id) {
-        return { ...s, status: 'cancelled', updatedAt: new Date().toISOString() };
-      }
-      return s;
-    });
-
-    setScheduleData(prev => ({ ...prev, slots: updatedSlots }));
-
-    if (settings.soundEnabled) {
-      playNotificationSound();
-    }
-
-    if (settings.webPushEnabled && 'Notification' in window && Notification.permission === 'granted') {
-      new Notification('🎾 송강실내테니스장 취소표 발생!', {
-        body: `${targetSlot.courtName} - ${targetSlot.timeLabel} (${selectedDate}) 코트가 방금 취소되어 예약 가능합니다!`,
-        icon: '🎾'
-      });
-    }
-
-    const newLog = {
-      id: 'log-' + Date.now(),
-      date: selectedDate,
-      courtName: targetSlot.courtName,
-      timeLabel: targetSlot.timeLabel,
-      timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      type: '취소 발생'
-    };
-    setCancellationLogs(prev => [newLog, ...prev]);
-
-    setActiveToast({
-      title: '🎾 [실시간 알림] 송강실내테니스장 취소표 발생!',
-      courtName: targetSlot.courtName,
-      timeLabel: targetSlot.timeLabel,
-      slot: targetSlot
-    });
-
-    setTimeout(() => {
-      setActiveToast(null);
-    }, 6000);
-  };
 
   const handleSlotClick = (slot) => {
     setBookingModalSlot(slot);
@@ -130,62 +70,6 @@ export default function App() {
         isRefreshing={isRefreshing}
       />
 
-      {/* Floating Active Cancellation Toast */}
-      {activeToast && (
-        <div style={{
-          position: 'fixed',
-          top: '16px', right: '16px', left: '16px',
-          zIndex: 999,
-          maxWidth: '420px',
-          margin: '0 auto',
-          background: 'linear-gradient(135deg, rgba(244, 63, 94, 0.95) 0%, rgba(225, 29, 72, 0.95) 100%)',
-          color: '#FFF',
-          padding: '14px 18px',
-          borderRadius: 'var(--radius-md)',
-          boxShadow: '0 10px 30px rgba(244, 63, 94, 0.5)',
-          border: '1px solid rgba(255, 255, 255, 0.3)',
-          backdropFilter: 'blur(10px)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          animation: 'flashCancelled 0.5s ease-out'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: '13px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Zap size={15} />
-              <span>{activeToast.title}</span>
-            </div>
-            <button
-              onClick={() => setActiveToast(null)}
-              style={{ background: 'transparent', color: '#FFF', padding: '2px' }}
-            >
-              <X size={16} />
-            </button>
-          </div>
-          <div style={{ fontSize: '12px', opacity: 0.95 }}>
-            <strong>{activeToast.courtName}</strong> - {activeToast.timeLabel} 코트가 취소되어 방금 예약 가능 상태로 변경되었습니다!
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-            <button
-              onClick={() => {
-                handleSlotClick(activeToast.slot);
-                setActiveToast(null);
-              }}
-              style={{
-                padding: '6px 12px',
-                borderRadius: 'var(--radius-sm)',
-                background: '#FFF',
-                color: '#E11D48',
-                fontSize: '12px',
-                fontWeight: '800'
-              }}
-            >
-              지금 바로 예약하기
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Main Responsive Container */}
       <main className="mobile-main-container" style={{
         maxWidth: '900px',
@@ -195,7 +79,6 @@ export default function App() {
       }}>
         <CourtSchedule
           scheduleData={scheduleData}
-          cancellationLogs={cancellationLogs}
           onSlotClick={handleSlotClick}
         />
       </main>
