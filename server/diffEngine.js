@@ -5,8 +5,10 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const STATE_FILE = path.join(__dirname, 'state', 'previousState.json');
+const HISTORY_FILE = path.join(__dirname, 'state', 'cancellationHistory.json');
 
-// Load persisted state from file (survives GitHub Actions runs via cache)
+// ─── previousState (slot availability map) ─────────────────────────────────
+
 function loadState() {
   try {
     if (fs.existsSync(STATE_FILE)) {
@@ -17,7 +19,6 @@ function loadState() {
   return new Map();
 }
 
-// Persist state to file after every crawl cycle
 function saveState(map) {
   try {
     const dir = path.dirname(STATE_FILE);
@@ -26,8 +27,30 @@ function saveState(map) {
   } catch (e) { /* silent */ }
 }
 
+// ─── cancellationHistory (persisted so dashboard survives process restarts) ─
+
+function loadHistory() {
+  try {
+    if (fs.existsSync(HISTORY_FILE)) {
+      const raw = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf-8'));
+      if (Array.isArray(raw)) return raw;
+    }
+  } catch (e) { /* silent */ }
+  return [];
+}
+
+function saveHistory(arr) {
+  try {
+    const dir = path.dirname(HISTORY_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(HISTORY_FILE, JSON.stringify(arr));
+  } catch (e) { /* silent */ }
+}
+
+// ─── Module-level state ────────────────────────────────────────────────────
+
 let previousState = loadState();
-let cancellationHistory = [];
+let cancellationHistory = loadHistory(); // ← now loaded from file on startup
 
 /**
  * Check if current KST time falls within the monthly booking open mute window:
@@ -70,8 +93,8 @@ export function processDiff(currentSlots, options = {}) {
     // 1. Slot is currently available/cancelled
     // AND
     // 2. Previous status was 'reserved' (genuine cancellation) OR
-    //    Previous status is undefined (first time we see this slot)
-    //    But NOT if previous status was already 'available' (no state change)
+    //    Previous status is undefined (first time we see this slot — new cancellation)
+    //    But NOT if previous status was already 'available' (no state change, no spam)
     const wasReservedOrNew = prevStatus === 'reserved' || prevStatus === undefined;
     const isStateChangedToAvailable = isAvailableNow && wasReservedOrNew;
 
@@ -121,13 +144,14 @@ export function processDiff(currentSlots, options = {}) {
 
   console.log(`[Diff Engine] ✅ 비교 완료 - 예약가능: ${availableCount}개 / 신규감지: ${changedToAvailable}개 (이미알고있던 빈자리: ${alreadyAvailable}개)`);
 
-  // Persist updated state to file
+  // Persist both state and history to files
   saveState(previousState);
 
-  // Keep cancellation history limited to 50 items
+  // Keep history limited to 50 items and persist
   if (cancellationHistory.length > 50) {
     cancellationHistory = cancellationHistory.slice(0, 50);
   }
+  saveHistory(cancellationHistory);
 
   return newCancellations;
 }
