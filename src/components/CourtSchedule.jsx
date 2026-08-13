@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import { CheckCircle2, Zap, X, ChevronRight, ExternalLink, BellRing } from 'lucide-react';
+import { CheckCircle2, Zap, X, ChevronRight, ExternalLink, BellRing, CalendarDays } from 'lucide-react';
 
 export default function CourtSchedule({ 
-  selectedDate, 
-  onDateChange, 
   scheduleData, 
   cancellationLogs = [],
   onSlotClick 
@@ -11,18 +9,37 @@ export default function CourtSchedule({
   // Detail List Modal State ('available' | 'cancelled' | null)
   const [listModalType, setListModalType] = useState(null);
 
-  const { slots = [] } = scheduleData || {};
+  const { slots = [], targetDatesScope = '' } = scheduleData || {};
 
-  // Calculate statistics & slot lists
-  const availableSlotsList = slots.filter(s => s.status === 'available');
-  const cancelledSlotsList = slots.filter(s => s.status === 'cancelled');
+  // Calculate statistics & slot lists for ALL target dates
+  const availableSlotsList = slots.filter(s => s.status === 'available' || s.status === 'cancelled');
+  const cancelledSlotsList = slots.filter(s => s.status === 'cancelled')
+    .concat(cancellationLogs.map(log => ({
+      id: log.id || 'log-' + Math.random(),
+      courtName: log.courtName,
+      timeLabel: log.timeLabel,
+      date: log.date,
+      status: 'cancelled',
+      timestamp: log.timestamp
+    })));
 
   const modalSlotList = listModalType === 'available' ? availableSlotsList : cancelledSlotsList;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       
-      {/* Top Banner: Only 2 Cards (1. 예약 가능 슬롯, 2. 방금 생성된 취소표) */}
+      {/* Scope Banner */}
+      <div className="glass-panel" style={{ padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>
+          <CalendarDays size={16} style={{ color: 'var(--primary-accent)' }} />
+          <span>모니터링 범위: <strong style={{ color: '#F8FAFC' }}>{targetDatesScope || '전체 예약 오픈 기간'}</strong></span>
+        </div>
+        <div style={{ fontSize: '11px', color: '#10B981', fontWeight: '700', background: 'rgba(16, 185, 129, 0.15)', padding: '3px 10px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+          실시간 자동 스캔 중 🎾
+        </div>
+      </div>
+
+      {/* Top Banner Cards */}
       <div className="glass-panel" style={{ padding: '16px 20px' }}>
         <div className="mobile-grid-2col" style={{ 
           display: 'grid', 
@@ -33,7 +50,7 @@ export default function CourtSchedule({
           {/* 1. Available Slots Card Button */}
           <div 
             onClick={() => setListModalType('available')}
-            title="클릭하면 예약 가능한 슬롯의 상세 목록 팝업이 뜹니다."
+            title="클릭하면 8월/전체 기간 예약 가능한 코트 목록을 확인합니다."
             style={{
               background: 'rgba(16, 185, 129, 0.12)',
               border: '1px solid rgba(16, 185, 129, 0.4)',
@@ -70,7 +87,7 @@ export default function CourtSchedule({
                 <CheckCircle2 size={22} />
               </div>
               <div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>예약 가능 슬롯</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>전체 기간 예약 가능 코트</div>
                 <div style={{ fontSize: '24px', fontWeight: '800', color: '#10B981' }}>
                   {availableSlotsList.length}개
                 </div>
@@ -82,7 +99,7 @@ export default function CourtSchedule({
           {/* 2. Cancelled Slots Card Button */}
           <div 
             onClick={() => setListModalType('cancelled')}
-            title="클릭하면 방금 발생한 취소표의 상세 목록 팝업이 뜹니다."
+            title="클릭하면 실시간 발생한 취소표 감지 내역을 확인합니다."
             style={{
               background: 'rgba(244, 63, 94, 0.12)',
               border: '1px solid rgba(244, 63, 94, 0.4)',
@@ -119,7 +136,7 @@ export default function CourtSchedule({
                 <Zap size={22} />
               </div>
               <div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>방금 생성된 취소표</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>실시간 발생 취소표</div>
                 <div style={{ fontSize: '24px', fontWeight: '800', color: '#FF6B81' }}>
                   {cancelledSlotsList.length}개
                 </div>
@@ -131,10 +148,10 @@ export default function CourtSchedule({
         </div>
       </div>
 
-      {/* Main Container: 1. Available Slots List (Top) & 2. Cancelled Logs Stream (Bottom) */}
+      {/* Main Container */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         
-        {/* Section 1: Available Slots List (예약 가능 슬롯 리스트) */}
+        {/* Section 1: Available Slots List Across Entire Period */}
         <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -153,10 +170,10 @@ export default function CourtSchedule({
               </div>
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#F8FAFC' }}>
-                  실시간 예약 가능 슬롯 목록
+                  전체 기간 예약 가능 코트 목록 (한눈에 보기)
                 </h3>
                 <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  현재 예약 가능한 송강실내테니스장 슬롯
+                  현재 예약 신청이 가능한 모든 날짜/코트 슬롯
                 </p>
               </div>
             </div>
@@ -178,19 +195,19 @@ export default function CourtSchedule({
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '420px', overflowY: 'auto' }}>
             {availableSlotsList.length === 0 ? (
               <div style={{
                 textAlign: 'center',
-                padding: '24px 10px',
+                padding: '28px 10px',
                 color: 'var(--text-muted)',
                 fontSize: '12px',
                 background: 'rgba(15, 23, 42, 0.4)',
                 borderRadius: 'var(--radius-sm)',
                 border: '1px dashed var(--border-color)'
               }}>
-                현재 예약 가능한 오픈 슬롯이 없습니다.<br/>
-                실시간으로 취소표가 발생하는 즉시 알림이 발송됩니다. 🎾
+                현재 전체 모니터링 기간 중 남아있는 빈 코트가 없습니다.<br/>
+                실시간으로 취소표가 발생하는 즉시 감지되어 알림이 발송됩니다. 🎾
               </div>
             ) : (
               availableSlotsList.map(slot => (
@@ -201,7 +218,7 @@ export default function CourtSchedule({
                     background: 'rgba(16, 185, 129, 0.1)',
                     border: '1px solid rgba(16, 185, 129, 0.3)',
                     borderRadius: 'var(--radius-sm)',
-                    padding: '10px 14px',
+                    padding: '12px 14px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -210,25 +227,27 @@ export default function CourtSchedule({
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{
-                      width: '28px',
-                      height: '28px',
+                      width: '32px',
+                      height: '32px',
                       borderRadius: '50%',
                       background: 'rgba(16, 185, 129, 0.2)',
                       color: '#10B981',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '13px',
+                      fontSize: '14px',
                       flexShrink: 0
                     }}>
                       🎾
                     </div>
                     <div>
-                      <div style={{ fontSize: '13px', fontWeight: '800', color: '#F8FAFC' }}>
-                        {slot.courtName} - {slot.timeLabel}
+                      <div style={{ fontSize: '13px', fontWeight: '800', color: '#F8FAFC', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ color: 'var(--primary-accent)' }}>📅 {slot.date}</span>
+                        <span>•</span>
+                        <span>{slot.courtName}</span>
                       </div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        {slot.date || selectedDate} | <strong style={{ color: '#10B981' }}>예약 가능</strong>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        시간: <strong style={{ color: '#F8FAFC' }}>{slot.timeLabel}</strong> | <strong style={{ color: '#10B981' }}>예약 가능</strong>
                       </div>
                     </div>
                   </div>
@@ -237,7 +256,7 @@ export default function CourtSchedule({
                     onClick={() => onSlotClick(slot)}
                     className="mobile-list-btn"
                     style={{
-                      padding: '6px 12px',
+                      padding: '7px 12px',
                       borderRadius: 'var(--radius-sm)',
                       background: 'var(--primary-accent)',
                       color: '#0B0F17',
@@ -259,7 +278,7 @@ export default function CourtSchedule({
           </div>
         </div>
 
-        {/* Section 2: Cancelled Logs Stream (취소표 발생 로그) */}
+        {/* Section 2: Cancelled Logs Stream */}
         <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -314,7 +333,7 @@ export default function CourtSchedule({
                 borderRadius: 'var(--radius-sm)',
                 border: '1px dashed var(--border-color)'
               }}>
-                아직 감지된 취소표 내역이 없습니다.<br/>
+                아직 발생한 취소표 내역이 없습니다.<br/>
                 에이전트가 실시간 모니터링 중입니다. 🎾
               </div>
             ) : (
@@ -353,7 +372,7 @@ export default function CourtSchedule({
                         {log.courtName} - {log.timeLabel}
                       </div>
                       <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span>{log.date}</span>
+                        <span>📅 {log.date}</span>
                         <span>•</span>
                         <span style={{ color: '#FF6B81', fontWeight: '600' }}>{log.timestamp} 감지됨</span>
                       </div>
@@ -393,7 +412,7 @@ export default function CourtSchedule({
 
       </div>
 
-      {/* Detail List Popup Modal (Mobile Optimized) */}
+      {/* Detail List Popup Modal */}
       {listModalType && (
         <div style={{
           position: 'fixed',
@@ -435,7 +454,7 @@ export default function CourtSchedule({
                 </div>
                 <div>
                   <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#F8FAFC' }}>
-                    {listModalType === 'available' ? '예약 가능한 슬롯 목록' : '방금 생성된 취소표 목록'}
+                    {listModalType === 'available' ? '전체 기간 예약 가능 코트 목록' : '취소표 내역 목록'}
                   </h3>
                   <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                     총 {modalSlotList.length}개 발견
@@ -472,7 +491,7 @@ export default function CourtSchedule({
                   borderRadius: 'var(--radius-sm)',
                   border: '1px dashed var(--border-color)'
                 }}>
-                  현재 {listModalType === 'available' ? '예약 가능한' : '방금 발생한 취소표'} 슬롯이 없습니다. 🎾
+                  현재 {listModalType === 'available' ? '예약 가능한' : '발생한 취소표'} 슬롯이 없습니다. 🎾
                 </div>
               ) : (
                 modalSlotList.map(slot => (
@@ -492,7 +511,7 @@ export default function CourtSchedule({
                   >
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                       <div style={{ fontSize: '13px', fontWeight: '800', color: '#F8FAFC', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span>📅 {slot.date || selectedDate}</span>
+                        <span>📅 {slot.date}</span>
                         <span>•</span>
                         <span style={{ color: 'var(--primary-accent)' }}>{slot.courtName}</span>
                       </div>
