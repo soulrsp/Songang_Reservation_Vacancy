@@ -33,17 +33,6 @@ export default function Navbar({
               송강실내테니스장 예약알리미
             </h1>
             <span style={{
-              fontSize: '11px',
-              fontWeight: '700',
-              padding: '2px 8px',
-              borderRadius: '12px',
-              background: 'rgba(204, 255, 0, 0.15)',
-              color: '#CCFF00',
-              border: '1px solid rgba(204, 255, 0, 0.3)'
-            }}>
-              PlayMCP Live
-            </span>
-            <span style={{
               fontSize: '12px',
               color: '#10B981',
               fontWeight: '600',
