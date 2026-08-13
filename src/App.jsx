@@ -16,8 +16,7 @@ export default function App() {
     return `${yyyy}-${mm}-${dd}`;
   };
 
-  const [selectedDate, setSelectedDate] = useState(getTodayStr());
-  const [scheduleData, setScheduleData] = useState({ courts: [], timeSlots: [], slots: [] });
+  const [scheduleData, setScheduleData] = useState({ courts: [], slots: [], targetDatesScope: '' });
   const [cancellationLogs, setCancellationLogs] = useState([]);
   const [lastRefreshed, setLastRefreshed] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -41,7 +40,7 @@ export default function App() {
 
   const loadData = useCallback(async () => {
     setIsRefreshing(true);
-    const data = await fetchCourtSchedule(selectedDate);
+    const data = await fetchCourtSchedule('all');
     setScheduleData(data);
     
     const logs = await fetchCancellationLogs();
@@ -49,7 +48,7 @@ export default function App() {
 
     setLastRefreshed(new Date());
     setIsRefreshing(false);
-  }, [selectedDate]);
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -195,8 +194,6 @@ export default function App() {
         width: '100%'
       }}>
         <CourtSchedule
-          selectedDate={selectedDate}
-          onDateChange={setSelectedDate}
           scheduleData={scheduleData}
           cancellationLogs={cancellationLogs}
           onSlotClick={handleSlotClick}
