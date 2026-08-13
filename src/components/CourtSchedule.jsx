@@ -34,9 +34,6 @@ export default function CourtSchedule({
           <CalendarDays size={16} style={{ color: 'var(--primary-accent)' }} />
           <span>모니터링 범위: <strong style={{ color: '#F8FAFC' }}>{targetDatesScope || '전체 예약 오픈 기간'}</strong></span>
         </div>
-        <div style={{ fontSize: '11px', color: '#10B981', fontWeight: '700', background: 'rgba(16, 185, 129, 0.15)', padding: '3px 10px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
-          실시간 자동 스캔 중 🎾
-        </div>
       </div>
 
       {/* Top Banner Cards */}
@@ -50,7 +47,7 @@ export default function CourtSchedule({
           {/* 1. Available Slots Card Button */}
           <div 
             onClick={() => setListModalType('available')}
-            title="클릭하면 8월/전체 기간 예약 가능한 코트 목록을 확인합니다."
+            title="클릭하면 예약 가능한 코트 목록을 확인합니다."
             style={{
               background: 'rgba(16, 185, 129, 0.12)',
               border: '1px solid rgba(16, 185, 129, 0.4)',
@@ -87,7 +84,7 @@ export default function CourtSchedule({
                 <CheckCircle2 size={22} />
               </div>
               <div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>전체 기간 예약 가능 코트</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>예약 가능 코트</div>
                 <div style={{ fontSize: '24px', fontWeight: '800', color: '#10B981' }}>
                   {availableSlotsList.length}개
                 </div>
@@ -170,29 +167,13 @@ export default function CourtSchedule({
               </div>
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#F8FAFC' }}>
-                  전체 기간 예약 가능 코트 목록 (한눈에 보기)
+                  예약 가능 코트 목록
                 </h3>
                 <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                   현재 예약 신청이 가능한 모든 날짜/코트 슬롯
                 </p>
               </div>
             </div>
-
-            <button
-              onClick={() => setListModalType('available')}
-              style={{
-                fontSize: '11px',
-                padding: '4px 8px',
-                borderRadius: 'var(--radius-sm)',
-                background: 'rgba(16, 185, 129, 0.15)',
-                color: '#10B981',
-                fontWeight: '700',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              팝업 보기
-            </button>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '420px', overflowY: 'auto' }}>
@@ -304,22 +285,6 @@ export default function CourtSchedule({
                 </p>
               </div>
             </div>
-            
-            <button
-              onClick={() => setListModalType('cancelled')}
-              style={{
-                fontSize: '11px',
-                padding: '4px 8px',
-                borderRadius: 'var(--radius-sm)',
-                background: 'rgba(244, 63, 94, 0.2)',
-                color: '#FF6B81',
-                fontWeight: '700',
-                border: '1px solid rgba(244, 63, 94, 0.3)',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              팝업 보기
-            </button>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto' }}>
@@ -454,7 +419,7 @@ export default function CourtSchedule({
                 </div>
                 <div>
                   <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#F8FAFC' }}>
-                    {listModalType === 'available' ? '전체 기간 예약 가능 코트 목록' : '취소표 내역 목록'}
+                    {listModalType === 'available' ? '예약 가능 코트 목록' : '취소표 내역 목록'}
                   </h3>
                   <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                     총 {modalSlotList.length}개 발견
