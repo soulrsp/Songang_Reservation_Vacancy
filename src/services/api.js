@@ -53,36 +53,81 @@ function getTargetDates() {
   return dates;
 }
 
+async function runConcurrently(tasks, limit = 8) {
+  const results = [];
+  const executing = [];
+  for (const task of tasks) {
+    const p = Promise.resolve().then(() => task());
+    results.push(p);
+    if (limit <= tasks.length) {
+      const e = p.then(() => executing.splice(executing.indexOf(e), 1));
+      executing.push(e);
+      if (executing.length >= limit) {
+        await Promise.race(executing);
+      }
+    }
+  }
+  return Promise.all(results);
+}
+
 async function fetchCourtDate(dateStr, court) {
   const base = dateStr.replace(/-/g, '');
-  const body = new URLSearchParams({
-    company_code: CENTER_CODE,
-    group_cd: '',
-    part_code: PART_CODE,
-    place_code: court.placeCode,
-    base_date: base,
-    rent_type: RENT_TYPE,
-    mem_no: ''
-  }).toString();
+  const query = `company_code=${CENTER_CODE}&group_cd=&part_code=${PART_CODE}&place_code=${court.placeCode}&base_date=${base}&rent_type=${RENT_TYPE}&mem_no=`;
+  const targetUrl = `https://www.djsiseol.or.kr/res/rest/facilities/place_time_state_list?${query}`;
 
-  const target = 'https://www.djsiseol.or.kr/res/rest/facilities/place_time_state_list';
   const endpoints = [
-    '/djsiseol-api/res/rest/facilities/place_time_state_list', // Vite dev proxy
-    `https://corsproxy.io/?${encodeURIComponent(target)}`      // GitHub Pages fallback
+    // 1. Vite 개발 환경 로컬 프록시
+    {
+      url: `/djsiseol-api/res/rest/facilities/place_time_state_list?${query}`,
+      method: 'GET'
+    },
+    // 2. 검증된 초고속 CORS 프록시 (cors.eu.org)
+    {
+      url: `https://cors.eu.org/${targetUrl}`,
+      method: 'GET'
+    },
+    // 3. Fallback: allorigins raw
+    {
+      url: `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+      method: 'GET'
+    },
+    // 4. Fallback: codetabs proxy
+    {
+      url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`,
+      method: 'GET'
+    }
   ];
 
   for (const ep of endpoints) {
     try {
-      const res = await fetch(ep, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+      const res = await fetch(ep.url, {
+        method: ep.method,
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
+
       if (res.ok) {
-        const data = await res.json();
+        let text = await res.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (_) {
+          continue;
+        }
+
+        // data가 contents 래핑되어 있는 경우 대응
+        if (data && typeof data === 'object' && data.contents) {
+          try { data = JSON.parse(data.contents); } catch (_) {}
+        }
+
         if (Array.isArray(data)) return data;
       }
-    } catch (_) { /* try next */ }
+    } catch (_) {
+      /* try next proxy */
+    }
   }
   return null;
 }
@@ -106,23 +151,30 @@ export async function fetchSonggangSchedule() {
   const courts = COURTS.map(c => ({ id: `songgang-${c.id}`, name: c.name }));
   const allSlots = [];
 
-  await Promise.all(dates.map(async (dateStr) => {
-    await Promise.all(COURTS.map(async (court) => {
-      const data = await fetchCourtDate(dateStr, court);
-      if (!data) return;
-      for (const slot of data) {
-        const startHour = slot.start_time.replace(':', '');
-        allSlots.push({
-          id: `${dateStr}_songgang-${court.id}_${startHour}`,
-          courtId: `songgang-${court.id}`,
-          courtName: court.name,
-          timeLabel: `${slot.start_time}~${slot.end_time}`,
-          date: dateStr,
-          status: slot.use_yn === 'N' ? 'available' : 'reserved',
-        });
-      }
-    }));
-  }));
+  const tasks = [];
+  for (const dateStr of dates) {
+    for (const court of COURTS) {
+      tasks.push(async () => {
+        const data = await fetchCourtDate(dateStr, court);
+        if (!data || !Array.isArray(data)) return;
+
+        for (const slot of data) {
+          const startHour = (slot.start_time || '').replace(':', '');
+          allSlots.push({
+            id: `${dateStr}_songgang-${court.id}_${startHour}`,
+            courtId: `songgang-${court.id}`,
+            courtName: court.name,
+            timeLabel: `${slot.start_time}~${slot.end_time}`,
+            date: dateStr,
+            status: slot.use_yn === 'N' ? 'available' : 'reserved',
+          });
+        }
+      });
+    }
+  }
+
+  // 동시 8개 병렬 처리로 브라우저 과부하 없이 수초 내에 전송 완료
+  await runConcurrently(tasks, 8);
 
   allSlots.sort((a, b) =>
     a.date !== b.date ? a.date.localeCompare(b.date) : a.timeLabel.localeCompare(b.timeLabel)
