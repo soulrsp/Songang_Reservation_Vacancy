@@ -15,9 +15,9 @@
    - 웹 화면에서는 **삐-뽀 사이렌 경보 🚨 + [송강 1초 즉시 이동] 거대 팝업** 노출.
    - 백엔드에서는 **텔레그램 초긴급 오픈 알림 ⚡** 동시 발송.
 
-3. **📱 스마트폰 PWA 홈 화면 설치 지원**
+3. **📱 스마트폰 PWA 홈 화면 설치 지원 & 실시간 다중 프록시 연동**
    - 크롬/사파리에서 "홈 화면에 추가" 또는 "앱 설치"로 단독 모바일 앱처럼 구동.
-   - 5분 자동 새로고침 및 1클릭 예약 사이트 이동.
+   - 앱 실행 시 & 새로고침 시 다중 고속 프록시 체인을 통해 0초 딜레이 실시간 공단 현황 반영.
 
 4. **100% 무료 & 서버 비용 0원**
    - GitHub Pages (웹 호스팅) + GitHub Actions + cron-job.org 트리거.
@@ -34,11 +34,22 @@ npm install
 # 로컬 개발 서버 실행 (http://localhost:5173)
 npm run dev
 
+# 프로덕션 빌드
+npm run build
+
 # 크롤러 테스트 실행
 node server/index.js
 ```
 
-### 2. GitHub Secrets 설정
+### 2. GitHub Push 가이드
+Windows 자격 증명 관리자(GCM)를 통해 전역 인증이 완료되어 있어, 별도 로그인 팝업 없이 터미널 또는 Antigravity AI를 통해 바로 푸시가 가능합니다:
+```powershell
+git add -A
+git commit -m "feat: 업데이트 내용"
+git push origin main
+```
+
+### 3. GitHub Secrets 설정
 GitHub 저장소 > **Settings** > **Secrets and variables** > **Actions**에 등록:
 * `TELEGRAM_BOT_TOKEN`: 텔레그램 봇 토큰
 * `TELEGRAM_CHAT_ID`: 알림 받을 개인 ID (`1744290092`) 또는 그룹방 ID (`-5351894139`), 혹은 둘 다 (`1744290092,-5351894139`)
