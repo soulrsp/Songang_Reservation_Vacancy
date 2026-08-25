@@ -1,17 +1,16 @@
-name: 🎾 송강실내테니스장 3분 간격 실시간 취소표 알리미 (GitHub Actions Cron)
+name: 🎾 송강실내테니스장 실시간 취소표 알리미
 
 on:
   schedule:
-    # Public 레포지토리 전용: 100% 무제한 무료 실행
-    # 한국 시간(KST) 06:00 ~ 24:00 동안 3분 간격 자동 감지 (UTC 기준 21:00~14:59)
+    # KST 06:00~24:00 동안 3분 간격 (UTC 21:00~14:59)
     - cron: '*/3 21-23,0-14 * * *'
   workflow_dispatch:
 
 jobs:
-  check-tennis-vacancy:
+  check-vacancy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -20,32 +19,26 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      # Restore previous slot state using dynamic restore-keys (prevents stale cache lock)
-      - name: Restore Slot State Cache
+      - name: Restore State Cache
         uses: actions/cache/restore@v4
         with:
           path: server/state
-          key: songgang-slot-state-${{ runner.os }}-${{ github.run_id }}
+          key: songgang-state-${{ runner.os }}-${{ github.run_id }}
           restore-keys: |
-            songgang-slot-state-${{ runner.os }}-
+            songgang-state-${{ runner.os }}-
 
       - name: Install Dependencies
         run: npm ci
 
-      - name: Run Songgang Tennis 3-Min Vacancy Monitor Agent
+      - name: Run Monitor
         env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          KAKAO_ACCESS_TOKEN: ${{ secrets.KAKAO_ACCESS_TOKEN }}
-          GH_PAT: ${{ secrets.GH_PAT }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        run: node server/index.js --cron-once
+        run: node server/index.js
 
-      # Save state after run with dynamic key so latest state is ALWAYS stored for next run
-      - name: Save Slot State Cache
+      - name: Save State Cache
         uses: actions/cache/save@v4
         if: always()
         with:
           path: server/state
-          key: songgang-slot-state-${{ runner.os }}-${{ github.run_id }}
+          key: songgang-state-${{ runner.os }}-${{ github.run_id }}
