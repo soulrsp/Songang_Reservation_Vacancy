@@ -39,8 +39,8 @@ function getTargetDates() {
     dates.push(`${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`);
   }
 
-  // 25일 10시 이후: 다음달도 포함
-  if ((today === 25 && hour >= 10) || today > 25) {
+  // 25일 09시 이후: 다음달 전체도 오픈되므로 모니터링에 포함
+  if ((today === 25 && hour >= 9) || today > 25) {
     const ny = month === 11 ? year + 1 : year;
     const nm = (month + 1) % 12;
     const nLast = new Date(ny, nm + 1, 0).getDate();
