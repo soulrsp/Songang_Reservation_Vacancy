@@ -7,7 +7,8 @@ export default function CourtSchedule({
 }) {
   const [showAvailableModal, setShowAvailableModal] = useState(false);
 
-  const { slots = [], targetDatesScope = '' } = scheduleData || {};
+  const { slots = [], scope = '', targetDatesScope = '' } = scheduleData || {};
+  const displayScope = scope || targetDatesScope || '전체 예약 오픈 기간';
 
   const availableSlotsList = slots.filter(s => s.status === 'available' || s.status === 'cancelled');
 
@@ -18,7 +19,7 @@ export default function CourtSchedule({
       <div className="glass-panel" style={{ padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
         <CalendarDays size={14} style={{ color: 'var(--primary-accent)', flexShrink: 0 }} />
         <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-          모니터링 범위: <strong style={{ color: '#F8FAFC' }}>{targetDatesScope || '전체 예약 오픈 기간'}</strong>
+          모니터링 범위: <strong style={{ color: '#F8FAFC' }}>{displayScope}</strong>
         </span>
       </div>
 
