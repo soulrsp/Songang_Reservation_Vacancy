@@ -29,10 +29,41 @@ function parseStatus(use_yn) {
 }
 
 /**
+ * 25일 아침 초고속 오픈 감지용 경량 함수 (1~2개 코트만 빠르게 찔러 오픈 여부 0.3초 내 판정)
+ */
+export async function checkNextMonthOpenFast(targetDateStr) {
+  const baseDateParam = targetDateStr.replace(/-/g, '');
+  try {
+    const response = await axios.post(
+      `${API_BASE}/place_time_state_list`,
+      new URLSearchParams({
+        company_code: CENTER_CODE,
+        group_cd: '',
+        part_code: PART_CODE,
+        place_code: '1', // 1코트 기준 빠른 체크
+        base_date: baseDateParam,
+        rent_type: RENT_TYPE,
+        mem_no: ''
+      }).toString(),
+      { httpsAgent, headers: HEADERS, timeout: 3000 }
+    );
+
+    const data = response.data;
+    if (Array.isArray(data) && data.length > 0) {
+      // use_yn === 'N' (예약 가능) 슬롯이 최소 1개 이상 열렸는지 확인
+      const availableSlots = data.filter(s => s.use_yn === 'N');
+      if (availableSlots.length > 0) {
+        return { isOpen: true, availableCount: availableSlots.length, totalSlots: data.length };
+      }
+    }
+    return { isOpen: false, availableCount: 0, totalSlots: Array.isArray(data) ? data.length : 0 };
+  } catch (err) {
+    return { isOpen: false, error: err.message };
+  }
+}
+
+/**
  * Scrape Songgang Indoor Tennis Court schedule via direct REST API.
- * 
- * @param {string} dateStr - format: YYYY-MM-DD
- * @returns {{ courts, slots }}
  */
 export async function scrapeSonggangTennis(dateStr) {
   const baseDateParam = dateStr.replace(/-/g, '');
@@ -92,32 +123,6 @@ export async function scrapeSonggangTennis(dateStr) {
   }
 
   return generateReservedBaseline(dateStr);
-}
-
-/**
- * Scrape multiple target dates and aggregate all slots & available slots.
- */
-export async function scrapeMultipleDates(dateStrList) {
-  const allSlots = [];
-  let courts = [];
-
-  await Promise.all(dateStrList.map(async (d) => {
-    const res = await scrapeSonggangTennis(d);
-    if (res && res.slots) {
-      allSlots.push(...res.slots);
-    }
-    if (res && res.courts && courts.length === 0) {
-      courts = res.courts;
-    }
-  }));
-
-  // Sort slots chronologically by date and time
-  allSlots.sort((a, b) => {
-    if (a.date !== b.date) return a.date.localeCompare(b.date);
-    return a.timeLabel.localeCompare(b.timeLabel);
-  });
-
-  return { courts, slots: allSlots };
 }
 
 function _pushReservedBaseline(dateStr, court, slotsArray) {
