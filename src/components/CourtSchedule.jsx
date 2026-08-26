@@ -1,6 +1,32 @@
 import React, { useState } from 'react';
 import { CheckCircle2, ChevronRight, ExternalLink, CalendarDays } from 'lucide-react';
 
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+function formatDateWithDay(dateStr) {
+  if (!dateStr) return '';
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  const dayName = WEEKDAYS[d.getDay()] || '';
+  return `${dateStr} (${dayName})`;
+}
+
+function getGoldenTimeInfo(dateStr, timeLabel) {
+  if (!dateStr || !timeLabel) return null;
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  const dayOfWeek = d.getDay();
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+  const startHour = parseInt(timeLabel.split(':')[0], 10);
+
+  if (isWeekend) {
+    return { label: '주말 황금타임', icon: '✨' };
+  } else if (startHour >= 17) {
+    return { label: '평일 저녁 피크', icon: '🔥' };
+  }
+  return null;
+}
+
 export default function CourtSchedule({ 
   scheduleData,
   onSlotClick 
@@ -94,56 +120,72 @@ export default function CourtSchedule({
               <span style={{ marginTop: '4px', display: 'block', color: 'var(--primary-accent)' }}>취소표 발생 시 텔레그램으로 즉시 알림 🎾</span>
             </div>
           ) : (
-            availableSlotsList.map(slot => (
-              <div
-                key={slot.id}
-                className="mobile-list-item"
-                style={{
-                  background: 'rgba(16, 185, 129, 0.1)',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '8px 10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '8px'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '12px' }}>🎾</span>
-                  <div>
-                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#F8FAFC', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <span style={{ color: 'var(--primary-accent)' }}>📅 {slot.date}</span>
-                      <span>•</span>
-                      <span>{slot.courtName}</span>
-                    </div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                      시간: <strong style={{ color: '#F8FAFC' }}>{slot.timeLabel}</strong>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => onSlotClick(slot)}
-                  className="mobile-list-btn"
+            availableSlotsList.map(slot => {
+              const golden = getGoldenTimeInfo(slot.date, slot.timeLabel);
+              return (
+                <div
+                  key={slot.id}
+                  className="mobile-list-item"
                   style={{
-                    padding: '5px 10px',
+                    background: golden ? 'rgba(255, 170, 0, 0.08)' : 'rgba(16, 185, 129, 0.1)',
+                    border: golden ? '1px solid rgba(255, 170, 0, 0.35)' : '1px solid rgba(16, 185, 129, 0.3)',
                     borderRadius: 'var(--radius-sm)',
-                    background: 'var(--primary-accent)',
-                    color: '#0B0F17',
-                    fontSize: '11px',
-                    fontWeight: '800',
+                    padding: '8px 10px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '2px',
-                    whiteSpace: 'nowrap'
+                    justifyContent: 'space-between',
+                    gap: '8px'
                   }}
                 >
-                  <span>예약</span>
-                  <ChevronRight size={11} />
-                </button>
-              </div>
-            ))
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '12px' }}>{golden ? golden.icon : '🎾'}</span>
+                    <div>
+                      <div style={{ fontSize: '12px', fontWeight: '800', color: '#F8FAFC', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                        <span style={{ color: 'var(--primary-accent)' }}>📅 {formatDateWithDay(slot.date)}</span>
+                        <span>•</span>
+                        <span>{slot.courtName}</span>
+                        {golden && (
+                          <span style={{
+                            fontSize: '10px',
+                            background: 'rgba(255, 170, 0, 0.2)',
+                            color: '#FFB800',
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            fontWeight: '700',
+                            border: '1px solid rgba(255, 170, 0, 0.4)'
+                          }}>
+                            {golden.icon} {golden.label}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        시간: <strong style={{ color: '#F8FAFC' }}>{slot.timeLabel}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => onSlotClick(slot)}
+                    className="mobile-list-btn"
+                    style={{
+                      padding: '5px 10px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'var(--primary-accent)',
+                      color: '#0B0F17',
+                      fontSize: '11px',
+                      fontWeight: '800',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '2px',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    <span>예약</span>
+                    <ChevronRight size={11} />
+                  </button>
+                </div>
+              );
+            })
           )}
         </div>
       </div>
@@ -217,54 +259,70 @@ export default function CourtSchedule({
                   현재 예약 가능한 슬롯이 없습니다. 🎾
                 </div>
               ) : (
-                availableSlotsList.map(slot => (
-                  <div
-                    key={slot.id}
-                    className="mobile-list-item"
-                    style={{
-                      background: 'rgba(16, 185, 129, 0.1)',
-                      border: '1px solid rgba(16, 185, 129, 0.3)',
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '12px 14px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '10px'
-                    }}
-                  >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <div style={{ fontSize: '13px', fontWeight: '800', color: '#F8FAFC', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span>📅 {slot.date}</span>
-                        <span>•</span>
-                        <span style={{ color: 'var(--primary-accent)' }}>{slot.courtName}</span>
-                      </div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                        ⏰ 시간: <strong>{slot.timeLabel}</strong>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => { onSlotClick(slot); setShowAvailableModal(false); }}
-                      className="mobile-list-btn"
+                availableSlotsList.map(slot => {
+                  const golden = getGoldenTimeInfo(slot.date, slot.timeLabel);
+                  return (
+                    <div
+                      key={slot.id}
+                      className="mobile-list-item"
                       style={{
-                        padding: '7px 12px',
+                        background: golden ? 'rgba(255, 170, 0, 0.08)' : 'rgba(16, 185, 129, 0.1)',
+                        border: golden ? '1px solid rgba(255, 170, 0, 0.35)' : '1px solid rgba(16, 185, 129, 0.3)',
                         borderRadius: 'var(--radius-sm)',
-                        background: 'var(--primary-accent)',
-                        color: '#0B0F17',
-                        fontSize: '12px',
-                        fontWeight: '800',
+                        padding: '12px 14px',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '4px',
-                        whiteSpace: 'nowrap',
-                        boxShadow: '0 0 10px rgba(204, 255, 0, 0.3)'
+                        justifyContent: 'space-between',
+                        gap: '10px'
                       }}
                     >
-                      <span>예약하기</span>
-                      <ExternalLink size={12} />
-                    </button>
-                  </div>
-                ))
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: '800', color: '#F8FAFC', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                          <span>📅 {formatDateWithDay(slot.date)}</span>
+                          <span>•</span>
+                          <span style={{ color: 'var(--primary-accent)' }}>{slot.courtName}</span>
+                          {golden && (
+                            <span style={{
+                              fontSize: '10px',
+                              background: 'rgba(255, 170, 0, 0.2)',
+                              color: '#FFB800',
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              fontWeight: '700',
+                              border: '1px solid rgba(255, 170, 0, 0.4)'
+                            }}>
+                              {golden.icon} {golden.label}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                          ⏰ 시간: <strong>{slot.timeLabel}</strong>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => { onSlotClick(slot); setShowAvailableModal(false); }}
+                        className="mobile-list-btn"
+                        style={{
+                          padding: '7px 12px',
+                          borderRadius: 'var(--radius-sm)',
+                          background: 'var(--primary-accent)',
+                          color: '#0B0F17',
+                          fontSize: '12px',
+                          fontWeight: '800',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          whiteSpace: 'nowrap',
+                          boxShadow: '0 0 10px rgba(204, 255, 0, 0.3)'
+                        }}
+                      >
+                        <span>예약하기</span>
+                        <ExternalLink size={12} />
+                      </button>
+                    </div>
+                  );
+                })
               )}
             </div>
 

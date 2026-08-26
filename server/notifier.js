@@ -1,6 +1,39 @@
 import axios from 'axios';
 
 const SONGGANG_URL = 'https://www.djsiseol.or.kr/res/www/121';
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+/**
+ * 날짜 문자열(YYYY-MM-DD)을 기반으로 요일이 포함된 문자열(YYYY-MM-DD (요일)) 반환
+ */
+export function formatDateWithDay(dateStr) {
+  if (!dateStr) return '';
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  const dayName = WEEKDAYS[d.getDay()] || '';
+  return `${dateStr} (${dayName})`;
+}
+
+/**
+ * 평일 17시 이후 또는 주말 전체 코트 여부를 판별하여 황금시간대 배지 텍스트 반환
+ */
+export function getGoldenTimeBadge(dateStr, timeLabel) {
+  if (!dateStr || !timeLabel) return '';
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  const dayOfWeek = d.getDay(); // 0: 일, 6: 토
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+  const startHour = parseInt(timeLabel.split(':')[0], 10);
+  const isWeekdayPrime = !isWeekend && startHour >= 17;
+
+  if (isWeekend) {
+    return '✨ *★★★ [황금시간대] 주말 코트! ★★★*\n';
+  } else if (isWeekdayPrime) {
+    return '🔥 *★★★ [황금시간대] 평일 저녁 피크타임! ★★★*\n';
+  }
+  return '';
+}
 
 /**
  * 25일 다음달 예약 조기 오픈 긴급 알림 발송
@@ -41,11 +74,15 @@ export async function sendTelegramOpenAlert(botToken, chatIds, details = {}) {
 export async function sendTelegramNotification(botToken, chatIds, event) {
   if (!botToken || !chatIds) return;
 
+  const formattedDate = formatDateWithDay(event.date);
+  const goldenBadge = getGoldenTimeBadge(event.date, event.timeLabel);
+
   const text =
     `🎾 *[송강실내테니스장 취소표 발생!]*\n\n` +
-    `📅 날짜: ${event.date}\n` +
+    `📅 날짜: ${formattedDate}\n` +
     `⏰ 시간: ${event.timeLabel}\n` +
-    `🏟️ 코트: ${event.courtName}\n\n` +
+    `🏟️ 코트: ${event.courtName}\n` +
+    (goldenBadge ? `${goldenBadge}\n` : `\n`) +
     `👉 [예약 사이트 바로가기](${SONGGANG_URL})`;
 
   // 쉼표(,)로 구분된 여러 ID 지원 (예: "1744290092,-5351894139" 또는 단일 ID)
@@ -61,7 +98,7 @@ export async function sendTelegramNotification(botToken, chatIds, event) {
         text,
         parse_mode: 'Markdown'
       });
-      console.log(`[Notifier] ✅ 텔레그램 알림 발송 완료 (${chatId}): ${event.courtName} ${event.date} ${event.timeLabel}`);
+      console.log(`[Notifier] ✅ 텔레그램 알림 발송 완료 (${chatId}): ${event.courtName} ${formattedDate} ${event.timeLabel}`);
     } catch (err) {
       console.error(`[Notifier] ❌ 텔레그램 발송 실패 (${chatId}):`, err.message);
     }
