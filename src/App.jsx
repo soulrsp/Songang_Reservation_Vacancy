@@ -204,6 +204,8 @@ export default function App() {
         <CourtSchedule
           scheduleData={scheduleData}
           onSlotClick={setBookingSlot}
+          isRefreshing={isRefreshing}
+          onRefresh={loadData}
         />
       </main>
 

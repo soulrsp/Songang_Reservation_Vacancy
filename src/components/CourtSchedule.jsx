@@ -29,7 +29,9 @@ function getGoldenTimeInfo(dateStr, timeLabel) {
 
 export default function CourtSchedule({ 
   scheduleData,
-  onSlotClick 
+  onSlotClick,
+  isRefreshing = false,
+  onRefresh
 }) {
   const [showAvailableModal, setShowAvailableModal] = useState(false);
 
@@ -42,11 +44,24 @@ export default function CourtSchedule({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       
       {/* Scope Banner */}
-      <div className="glass-panel" style={{ padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <CalendarDays size={14} style={{ color: 'var(--primary-accent)', flexShrink: 0 }} />
-        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-          모니터링 범위: <strong style={{ color: '#F8FAFC' }}>{displayScope}</strong>
-        </span>
+      <div className="glass-panel" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <CalendarDays size={14} style={{ color: 'var(--primary-accent)', flexShrink: 0 }} />
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            모니터링 범위: <strong style={{ color: '#F8FAFC' }}>{displayScope}</strong>
+          </span>
+        </div>
+        {isRefreshing && (
+          <span style={{
+            fontSize: '11px', color: 'var(--primary-accent)',
+            display: 'flex', alignItems: 'center', gap: '4px',
+            background: 'rgba(204, 255, 0, 0.1)',
+            padding: '2px 8px', borderRadius: '10px'
+          }}>
+            <span className="live-indicator" />
+            최신 현황 실시간 동기화 중...
+          </span>
+        )}
       </div>
 
       {/* Available Slots Summary Card */}
@@ -89,20 +104,42 @@ export default function CourtSchedule({
 
       {/* Available Slots List */}
       <div className="glass-panel" style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <div style={{
-            width: '24px', height: '24px',
-            borderRadius: '6px',
-            background: 'rgba(16, 185, 129, 0.15)',
-            color: '#10B981',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0
-          }}>
-            <CheckCircle2 size={14} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{
+              width: '24px', height: '24px',
+              borderRadius: '6px',
+              background: 'rgba(16, 185, 129, 0.15)',
+              color: '#10B981',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <CheckCircle2 size={14} />
+            </div>
+            <h3 style={{ fontSize: '13px', fontWeight: '800', color: '#F8FAFC' }}>
+              예약 가능 코트 목록
+            </h3>
           </div>
-          <h3 style={{ fontSize: '13px', fontWeight: '800', color: '#F8FAFC' }}>
-            예약 가능 코트 목록
-          </h3>
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: isRefreshing ? 'var(--primary-accent)' : 'var(--text-muted)',
+                fontSize: '11px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                cursor: isRefreshing ? 'wait' : 'pointer',
+                padding: '2px 6px'
+              }}
+            >
+              <span className={isRefreshing ? 'animate-spin' : ''}>🔄</span>
+              <span>{isRefreshing ? '조회 중' : '새로고침'}</span>
+            </button>
+          )}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '360px', overflowY: 'auto' }}>
