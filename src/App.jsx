@@ -1,15 +1,22 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Navbar from './components/Navbar';
 import CourtSchedule from './components/CourtSchedule';
-import { fetchSonggangSchedule, checkNextMonthOpenFastClient, getNextMonthFirstDayStr } from './services/api';
+import { fetchSonggangSchedule, checkNextMonthOpenFastClient, getNextMonthFirstDayStr, getCachedSchedule } from './services/api';
 import { playEmergencySiren } from './services/sound';
 import { ExternalLink, Zap, AlertTriangle, CheckCircle, Flame } from 'lucide-react';
 
 const AUTO_REFRESH_MS = 5 * 60 * 1000; // 평소 5분마다 자동 새로고침
 
 export default function App() {
-  const [scheduleData, setScheduleData] = useState({ courts: [], slots: [], scope: '' });
-  const [lastRefreshed, setLastRefreshed] = useState(null);
+  // SWR: 로컬 스토리지에 캐시된 데이터가 있으면 0초 만에 즉시 렌더링
+  const [scheduleData, setScheduleData] = useState(() => {
+    const cached = getCachedSchedule();
+    return cached || { courts: [], slots: [], scope: '' };
+  });
+  const [lastRefreshed, setLastRefreshed] = useState(() => {
+    const cached = getCachedSchedule();
+    return cached?.cachedAt ? new Date(cached.cachedAt) : null;
+  });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [bookingSlot, setBookingSlot] = useState(null);
 
@@ -33,8 +40,10 @@ export default function App() {
     setIsRefreshing(true);
     try {
       const data = await fetchSonggangSchedule();
-      setScheduleData(data);
-      setLastRefreshed(new Date());
+      if (data && Array.isArray(data.slots) && data.slots.length > 0) {
+        setScheduleData(data);
+        setLastRefreshed(new Date());
+      }
     } finally {
       setIsRefreshing(false);
     }

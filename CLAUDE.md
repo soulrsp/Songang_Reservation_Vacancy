@@ -72,13 +72,15 @@
 1. **평소**: 오늘 ~ 이번 달 말일까지의 날짜를 모니터링.
 2. **매달 25일 09:00 이후**: 다음 달 전체(1일 ~ 다음 달 말일)도 자동으로 모니터링 대상에 추가.
 
-### B. 프론트엔드 실시간 CORS 프록시 체인 (`src/services/api.js`)
-* 브라우저 CORS 제약을 우회하기 위해 다중 프록시 풀 구성:
+### B. 프론트엔드 실시간 CORS 프록시 체인 및 SWR 로컬 캐싱 (`src/services/api.js`)
+* **SWR (Stale-While-Revalidate) 로컬 캐시**: 앱 실행 시 `localStorage`에 캐시된 코트 현황을 0.01초 만에 즉시 화면에 렌더링하고, 백그라운드에서 최신 데이터를 갱신하여 빈 화면/0개 깜빡임 완벽 방지.
+* **지능형 재시도 및 다중 프록시 풀**:
   1. 로컬 Vite 프록시 (`/djsiseol-api/...`)
   2. `https://cors.eu.org/` (초고속 검증 프록시)
   3. `https://api.allorigins.win/raw?url=...` (백업)
   4. `https://api.codetabs.com/v1/proxy?quest=...` (백업)
-* **동시성 제어 (`runConcurrently`)**: 동시 8개 병렬 큐를 적용하여 37일치(148개 요청)를 약 5~6초 내에 브라우저 과부하 없이 완벽 수집.
+* **동시성 제어 (`runConcurrently`)**: 동시 8개 병렬 큐를 적용하여 31~37일치(120+개 요청)를 약 5~6초 내에 브라우저 과부하 없이 완벽 수집.
+* **오류 방어**: 네트워크 오류 발생 시에도 기존 캐시 데이터를 유지하여 화면이 비워지는 현상 차단.
 
 ### C. 상태 변화 감지 규칙 (`diffEngine.js`)
 * 이전 상태(`prevStatus === 'reserved'` 또는 `undefined`) ➔ 현재 상태(`isAvailableNow === true`) 일 때만 **취소표/빈자리 발생**으로 판정.
